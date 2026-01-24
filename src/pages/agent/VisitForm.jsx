@@ -817,117 +817,197 @@ const uploadCustomerPhoto = async (file) => {
                                     )}
 
                                     {ext.mode === 'New Unit' && (
-    <>
-    
-    <div className='col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4'>
-
-        <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Seller</label>
-            <input value={ext.seller} onChange={(e) => handleExtinguisherChange(index, 'seller', e.target.value)} className="input-field py-2 text-sm" placeholder="Seller Name" />
-        </div>
-        <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Brand</label>
-            <input value={ext.brand} onChange={(e) => handleExtinguisherChange(index, 'brand', e.target.value)} className="input-field py-2 text-sm" placeholder="Brand Name" />
-        </div>
-        <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Quantity</label>
-            <input type="number" value={ext.quantity} onChange={(e) => handleExtinguisherChange(index, 'quantity', parseInt(e.target.value) || 1)} className="input-field py-2 text-sm" />
-        </div>
-            </div>
-        {/* <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Price (SAR)</label>
-            <div className='text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0]'>{ext.price}</div>
-        </div> */}
-
-        <div className="col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <>
+  <div className="col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
   {/* Fire Fighting System */}
   <div>
     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
       Fire Fighting System
     </label>
     <select
-      value={ext.firefightingSystem || ''}
-      onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
-      className="input-field py-2 text-sm"
+    value={ext.firefightingSystem || ''}
+    onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
+    className="input-field py-2 text-sm"
     >
-      <option value="">Select...</option>
-      {FIRE_SYSTEMS.firefighting.map((item) => (
+        <option value="">Select...</option>
+        {FIRE_SYSTEMS.firefighting.map((item) => (
         <option key={item.name} value={item.name}>
-        {item.name} - SAR {item.price.toLocaleString()}
+        {item.name}
       </option>
       ))}
+        <option value="Other">Other</option>
     </select>
-  </div>
+    {ext.firefightingSystem === 'Other' && (
+        <input
+        type="text"
+        placeholder="Specify Other"
+        value={ext.customFirefighting || ''}
+        onChange={(e) => handleExtinguisherChange(index, 'customFirefighting', e.target.value)}
+        className="input-field py-2 mt-2 text-sm"
+        />
+    )}
+    </div>
 
-  {/* Fire Alarm System */}
-  <div>
+    {/* Fire Alarm System */}
+    <div>
     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-      Fire Alarm System
+        Fire Alarm System
     </label>
     <select
-      value={ext.fireAlarmSystem || ''}
-      onChange={(e) => handleExtinguisherChange(index, 'fireAlarmSystem', e.target.value)}
-      className="input-field py-2 text-sm"
+        value={ext.fireAlarmSystem || ''}
+        onChange={(e) => handleExtinguisherChange(index, 'fireAlarmSystem', e.target.value)}
+        className="input-field py-2 text-sm"
     >
-      <option value="">Select...</option>
-      {FIRE_SYSTEMS.fireAlarm.map((item) => (
+        <option value="">Select...</option>
+        {FIRE_SYSTEMS.fireAlarm.map((item) => (
         <option key={item.name} value={item.name}>
-        {item.name} - SAR {item.price.toLocaleString()}
+        {item.name}
       </option>
       ))}
+    <option value="Other">Other</option>
     </select>
-  </div>
+    {ext.fireAlarmSystem === 'Other' && (
+        <input
+        type="text"
+        placeholder="Specify Other"
+        value={ext.customFireAlarm || ''}
+        onChange={(e) => handleExtinguisherChange(index, 'customFireAlarm', e.target.value)}
+        className="input-field py-2 mt-2 text-sm"
+        />
+    )}
+    </div>
 
-  {/* Pump Type */}
-  <div>
-    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-      Pump Type
-    </label>
-    <select
-      value={ext.pumpType || ''}
-      onChange={(e) => handleExtinguisherChange(index, 'pumpType', e.target.value)}
-      className="input-field py-2 text-sm"
-    >
-      <option value="">Select...</option>
-      {FIRE_SYSTEMS.pumps.map((item) => (
-        <option key={item.name} value={item.name}>
-        {item.name} - SAR {item.price.toLocaleString()}
-      </option>
-      ))}
-    </select>
-  </div>
-</div>
-        <div className="col-span-4 mt-6 pt-4 border-t border-slate-200 grid grid-cols-2 md:grid-cols-5 gap-4">
+      {/* Pump Type */}
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+          Pump Type
+        </label>
+        <select
+          value={ext.pumpType || ''}
+          onChange={(e) => handleExtinguisherChange(index, 'pumpType', e.target.value)}
+          className="input-field py-2 text-sm"
+        >
+          <option value="">Select...</option>
+          {FIRE_SYSTEMS.pumps.map((item) => (
+            <option key={item.name} value={item.name}>
+              {item.name}
+            </option>
+          ))}
+          <option value="Other">Other</option>
+        </select>
+        {ext.pumpType === 'Other' && (
+          <input
+            type="text"
+            placeholder="Specify Other"
+            value={ext.customPump || ''}
+            onChange={(e) => handleExtinguisherChange(index, 'customPump', e.target.value)}
+            className="input-field py-2 mt-2 text-sm"
+          />
+        )}
+      </div>
+    </div>
+    <div className='col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4'>
+        <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+          Partner
+        </label>
+        <select
+          value={ext.partner || ''}
+          onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)}
+          className="input-field py-2 text-sm"
+        >
+          <option value="">Select Partner</option>
+          <option>FireShield Services</option>
+          <option>SafetyFirst Refilling</option>
+          <option>Al-Faisal Fire Equipment</option>
+          <option>Guardian Fire Solutions</option>
+          <option>United Fire Protection</option>
+          <option>Other</option>
+        </select>
+
+        {ext.partner === 'Other' && (
+          <div className="mt-3 animate-fade-in">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+              Specify Partner Name
+            </label>
+            <input
+              type="text"
+              value={ext.customPartner || ''}
+              onChange={(e) => handleExtinguisherChange(index, 'customPartner', e.target.value)}
+              placeholder="e.g. ABC Fire Refilling Co."
+              className="input-field py-2 text-sm"
+            />
+          </div>
+        )}
+      </div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Seller</label>
+        <input 
+          value={ext.seller} 
+          onChange={(e) => handleExtinguisherChange(index, 'seller', e.target.value)} 
+          className="input-field py-2 text-sm" 
+          placeholder="Seller Name" 
+        />
+      </div>
+
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Brand</label>
+        <input 
+          value={ext.brand} 
+          onChange={(e) => handleExtinguisherChange(index, 'brand', e.target.value)} 
+          className="input-field py-2 text-sm" 
+          placeholder="Brand Name" 
+        />
+      </div>
+
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Quantity</label>
+        <input 
+          type="number" 
+          value={ext.quantity} 
+          onChange={(e) => handleExtinguisherChange(index, 'quantity', parseInt(e.target.value) || 1)} 
+          className="input-field py-2 text-sm" 
+        />
+      </div>
+    </div>
+
+    
+
+    {['Other', 'Other', 'Other'].includes(ext.firefightingSystem) || ['Other', 'Other', 'Other'].includes(ext.fireAlarmSystem) || ['Other', 'Other', 'Other'].includes(ext.pumpType) ? (
+      <div className="col-span-4 mt-2 text-sm text-orange-700 font-medium">
+       Note: Price and availability confirmed by the company
+      </div>
+    ) : null}
+
+    <div className="col-span-4 mt-6 pt-4 border-t border-slate-200 grid grid-cols-2 md:grid-cols-5 gap-4">
       <div>
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Base Price</label>
         <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
           SAR 180
         </div>
       </div>
+
       <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Fighting Add-on</label>
-        {/* <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-          SAR {ADDON_PRICES.firefightingSystem[ext.firefightingSystem || ''] || 0}
-        </div> */}
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Fighting MTP</label>
         <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-        SAR {FIRE_SYSTEMS.firefighting.find(it => it.name === ext.firefightingSystem)?.price || 0}
+          SAR {ext.firefightingSystem !== 'Other' ? FIRE_SYSTEMS.firefighting.find(it => it.name === ext.firefightingSystem)?.price || 0 : 0}
         </div>
       </div>
+
       <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Alarm Add-on</label>
-        {/* <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-          SAR {ADDON_PRICES.fireAlarmSystem[ext.fireAlarmSystem || ''] || 0}
-        </div> */}
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Alarm MTP</label>
         <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-        SAR {FIRE_SYSTEMS.fireAlarm.find(it => it.name === ext.fireAlarmSystem)?.price || 0}
+          SAR {ext.fireAlarmSystem !== 'Other' ? FIRE_SYSTEMS.fireAlarm.find(it => it.name === ext.fireAlarmSystem)?.price || 0 : 0}
         </div>
       </div>
+
       <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Pump Add-on</label>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Pump MTP</label>
         <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-        SAR {FIRE_SYSTEMS.pumps.find(it => it.name === ext.pumpType)?.price || 0}
+          SAR {ext.pumpType !== 'Other' ? FIRE_SYSTEMS.pumps.find(it => it.name === ext.pumpType)?.price || 0 : 0}
         </div>
       </div>
+
       <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
         <label className="text-xs font-bold text-green-800 uppercase tracking-wider mb-1 block">Final Price (SAR)</label>
         <div className="text-xl font-bold text-green-700">
@@ -935,16 +1015,15 @@ const uploadCustomerPhoto = async (file) => {
         </div>
       </div>
     </div>
-
-    </>
+  </>
 )}
 
+
                                     {ext.mode === 'Refill' && (
-                                        <>
-                                            <div>
-                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Partner</label>
-                                                {/* <input value={ext.partner} onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)} className="input-field py-2 text-sm" placeholder="Service Partner" /> */}
-                                                <select
+    <>
+        <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Partner</label>
+            <select
                 value={ext.partner}
                 onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)}
                 className="input-field py-2 text-sm"
@@ -972,10 +1051,22 @@ const uploadCustomerPhoto = async (file) => {
                     />
                 </div>
             )}
-                                            </div>
-                                            
-                                        </>
-                                    )}
+        </div>
+
+        {/* --- Quantity Input --- */}
+        <div className="">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Quantity</label>
+            <input
+                type="number"
+                value={ext.quantity}
+                min={1}
+                onChange={(e) => handleExtinguisherChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                className="input-field py-2 text-sm"
+            />
+        </div>
+    </>
+)}
+
                                 </div>
                             </div>
                         ))}
