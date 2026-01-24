@@ -26,7 +26,8 @@ const VisitForm = () => {
     const [isNewCustomer, setIsNewCustomer] = useState(false);
     const [isFetchingLocation, setIsFetchingLocation] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-
+    const [recordingIndex, setRecordingIndex] = useState(null);
+    const [unitVoiceWarnings, setUnitVoiceWarnings] = useState({});
 
     // Component ke top pe add karo (useState se pehle)
 const ADDON_PRICES = {
@@ -113,6 +114,10 @@ const FIRE_SYSTEMS = {
             firefightingSystem: '',
             fireAlarmSystem: '',
             pumpType: '',
+
+            maintenanceVoiceNote: null,
+            maintenanceNotes: '',
+            maintenanceUnitPhoto: null,
         }
     ]);
 
@@ -213,16 +218,15 @@ const uploadCustomerPhoto = async (file) => {
 
       const updated = { ...item, [field]: value };
 
-      // Existing logic (type, partner etc.)
       if (field === 'type' && value !== 'Other') updated.customType = '';
       if (field === 'partner' && value !== 'Other') updated.customPartner = '';
-      
-      if (field === 'mode' && value === 'New Unit') {
-        updated.price = 180; // reset to base
+
+      if (field === 'mode') {
+        updated.price = 180; // default base
       }
 
-      // New Unit mode mein price update
-      if (updated.mode === 'New Unit' && 
+      // Price calculation for BOTH New Unit AND Maintenance
+      if (['New Unit', 'Maintenance'].includes(updated.mode) &&
           ['firefightingSystem', 'fireAlarmSystem', 'pumpType', 'mode'].includes(field)) {
         
         const base = 180;
@@ -254,6 +258,9 @@ const uploadCustomerPhoto = async (file) => {
             firefightingSystem: '',
             fireAlarmSystem: '',
             pumpType: '',
+            maintenanceVoiceNote: null,       // ← Add yeh
+            maintenanceNotes: '',             // ← Add yeh
+            maintenanceUnitPhoto: null,
         }]);
     };
 
@@ -381,6 +388,53 @@ const uploadCustomerPhoto = async (file) => {
         }
     };
 
+    const startUnitRecording = async (index) => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream);
+    let chunks = [];
+
+    recorder.ondataavailable = (e) => chunks.push(e.data);
+
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/webm' });
+      const sizeKB = (blob.size / 1024).toFixed(1);
+
+      if (blob.size > MAX_VOICE_NOTE_SIZE) {
+        setUnitVoiceWarnings(prev => ({
+          ...prev,
+          [index]: `Voice note too large (${sizeKB} KB) — max 250 KB`
+        }));
+      } else {
+        setExtinguishers(prev => prev.map((item, i) =>
+          i === index ? { ...item, maintenanceVoiceNote: blob } : item
+        ));
+        setUnitVoiceWarnings(prev => {
+          const copy = { ...prev };
+          delete copy[index];
+          return copy;
+        });
+      }
+      chunks = [];
+    };
+
+    recorder.start();
+    setMediaRecorder(recorder);
+    setRecordingIndex(index);           // ← important
+    setIsRecording(true);
+    setRecordingTime(0);
+  } catch (err) {
+    alert("Mic access denied: " + err.message);
+  }
+};
+
+const stopUnitRecording = () => {
+  if (mediaRecorder) {
+    mediaRecorder.stop();
+    setIsRecording(false);
+    setRecordingIndex(null);
+  }
+};
     useEffect(() => {
         let interval;
         if (isRecording) {
@@ -400,6 +454,68 @@ const uploadCustomerPhoto = async (file) => {
   );
 };
 
+
+const uploadMaintenanceVoice = async (blob, index) => {
+  if (!blob) return null;
+  try {
+    const fileName = `voice-${Date.now()}-${index}.webm`;
+    const filePath = `voices/${fileName}`;  // optional folder
+
+    const { error: uploadError } = await supabase.storage
+      .from('visit-voice-notes')           // ← yahan new bucket
+      .upload(filePath, blob, {
+        contentType: blob.type || 'audio/webm',
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Voice upload error:', uploadError);
+      alert('Voice upload fail: ' + uploadError.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('visit-voice-notes')
+      .getPublicUrl(filePath);
+
+    return urlData?.publicUrl || null;
+  } catch (err) {
+    console.error('Voice upload failed:', err);
+    return null;
+  }
+};
+
+const uploadMaintenancePhoto = async (file, index) => {
+  if (!file) return null;
+  try {
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `photo-${Date.now()}-${index}.${fileExt}`;
+    const filePath = `photos/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('visit-unit-photos')           // ← yahan new bucket
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Photo upload error:', uploadError);
+      alert('Photo upload fail: ' + uploadError.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('visit-unit-photos')
+      .getPublicUrl(filePath);
+
+    return urlData?.publicUrl || null;
+  } catch (err) {
+    console.error('Photo upload failed:', err);
+    return null;
+  }
+};
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -496,7 +612,21 @@ const uploadCustomerPhoto = async (file) => {
 
             // 4. Insert Inventory
             if (extinguishers.length > 0) {
-                const inventoryRows = extinguishers.map(item => ({
+                const inventoryRows = await Promise.all(
+                extinguishers.map(async (item, idx) => {
+                let voiceUrl = null;
+                let photoUrl = null;
+
+                if (item.mode === 'Maintenance') {
+                    if (item.maintenanceVoiceNote) {
+                    voiceUrl = await uploadMaintenanceVoice(item.maintenanceVoiceNote, idx);
+                    }
+                    if (item.maintenanceUnitPhoto) {
+                    photoUrl = await uploadMaintenancePhoto(item.maintenanceUnitPhoto, idx);
+                    }
+                }
+
+                return {
                     customer_id: finalCustId,
                     visit_id: visitId,
                     type: item.type,
@@ -510,8 +640,13 @@ const uploadCustomerPhoto = async (file) => {
                     partner: item.partner,
                     price: item.price,
                     firefighting_system: item.firefightingSystem || null,
-    fire_alarm_system: item.fireAlarmSystem || null,
-    pump_type: item.pumpType || null,
+                    fire_alarm_system: item.fireAlarmSystem || null,
+                    pump_type: item.pumpType || null,
+
+                    maintenance_notes: item.maintenanceNotes || null,
+                    maintenance_voice_url: voiceUrl,
+                    maintenance_unit_photo_url: photoUrl,
+                };
                 }));
 
                 const { error: invError } = await supabase.from('extinguishers').insert(inventoryRows);
@@ -1067,6 +1202,222 @@ const uploadCustomerPhoto = async (file) => {
     </>
 )}
 
+                                    {ext.mode === 'Maintenance' && (
+  <>
+    <div className="col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* Fire Fighting System */}
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+          Fire Fighting System
+        </label>
+        <select
+          value={ext.firefightingSystem || ''}
+          onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
+          className="input-field py-2 text-sm"
+        >
+          <option value="">Select...</option>
+          {FIRE_SYSTEMS.firefighting.map((item) => (
+            <option key={item.name} value={item.name}>
+              {item.name}
+            </option>
+          ))}
+          <option value="Other">Other</option>
+        </select>
+        {ext.firefightingSystem === 'Other' && (
+          <input
+            type="text"
+            placeholder="Specify Other"
+            value={ext.customFirefighting || ''}
+            onChange={(e) => handleExtinguisherChange(index, 'customFirefighting', e.target.value)}
+            className="input-field py-2 mt-2 text-sm"
+          />
+        )}
+      </div>
+
+      {/* Fire Alarm System */}
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+          Fire Alarm System
+        </label>
+        <select
+          value={ext.fireAlarmSystem || ''}
+          onChange={(e) => handleExtinguisherChange(index, 'fireAlarmSystem', e.target.value)}
+          className="input-field py-2 text-sm"
+        >
+          <option value="">Select...</option>
+          {FIRE_SYSTEMS.fireAlarm.map((item) => (
+            <option key={item.name} value={item.name}>
+              {item.name}
+            </option>
+          ))}
+          <option value="Other">Other</option>
+        </select>
+        {ext.fireAlarmSystem === 'Other' && (
+          <input
+            type="text"
+            placeholder="Specify Other"
+            value={ext.customFireAlarm || ''}
+            onChange={(e) => handleExtinguisherChange(index, 'customFireAlarm', e.target.value)}
+            className="input-field py-2 mt-2 text-sm"
+          />
+        )}
+      </div>
+
+      {/* Pump Type */}
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+          Pump Type
+        </label>
+        <select
+          value={ext.pumpType || ''}
+          onChange={(e) => handleExtinguisherChange(index, 'pumpType', e.target.value)}
+          className="input-field py-2 text-sm"
+        >
+          <option value="">Select...</option>
+          {FIRE_SYSTEMS.pumps.map((item) => (
+            <option key={item.name} value={item.name}>
+              {item.name}
+            </option>
+          ))}
+          <option value="Other">Other</option>
+        </select>
+        {ext.pumpType === 'Other' && (
+          <input
+            type="text"
+            placeholder="Specify Other"
+            value={ext.customPump || ''}
+            onChange={(e) => handleExtinguisherChange(index, 'customPump', e.target.value)}
+            className="input-field py-2 mt-2 text-sm"
+          />
+        )}
+      </div>
+    </div>
+
+    <div className="col-span-4 space-y-6">
+
+      {/* Voice + Text in one row (flex/grid) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Left: Voice Note */}
+        <div className="bg-white p-5 rounded-xl border border-slate-200">
+          <label className="block text-sm font-bold text-slate-700 mb-3">
+            Unit Voice Note (max 250 KB)
+          </label>
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <button
+              onMouseDown={() => startUnitRecording(index)}
+              onMouseUp={stopUnitRecording}
+              onTouchStart={() => startUnitRecording(index)}
+              onTouchEnd={stopUnitRecording}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+                recordingIndex === index && isRecording
+                  ? 'bg-red-500 animate-pulse text-white scale-110 shadow-lg shadow-red-500/30'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+            >
+              {recordingIndex === index && isRecording ? <Square size={20} /> : <Mic size={20} />}
+            </button>
+
+            <div className="flex-1">
+              <p className="font-medium text-slate-800 text-sm">
+                {recordingIndex === index && isRecording
+                  ? `Recording... ${recordingTime}s`
+                  : ext.maintenanceVoiceNote
+                  ? 'Voice note recorded'
+                  : 'Hold to record'}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Condition, issues, recommendations...
+              </p>
+
+              {unitVoiceWarnings[index] && (
+                <p className="text-xs text-red-600 mt-2 flex items-center gap-1.5">
+                  <AlertTriangle size={14} /> {unitVoiceWarnings[index]}
+                </p>
+              )}
+            </div>
+
+            {ext.maintenanceVoiceNote && recordingIndex !== index && (
+              <div className="flex items-center gap-3 mt-2 sm:mt-0">
+                <audio
+                  src={URL.createObjectURL(ext.maintenanceVoiceNote)}
+                  controls
+                  className="h-8 w-40"
+                />
+                <button
+                  onClick={() => {
+                    setExtinguishers(prev => prev.map((it, i) =>
+                      i === index ? { ...it, maintenanceVoiceNote: null } : it
+                    ));
+                    setUnitVoiceWarnings(prev => {
+                      const copy = { ...prev };
+                      delete copy[index];
+                      return copy;
+                    });
+                  }}
+                  className="text-red-500 hover:text-red-600 text-xs"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Text Notes */}
+        <div className="bg-white p-5 rounded-xl border border-slate-200">
+          <label className="block text-sm font-bold text-slate-700 mb-3">
+            Maintenance Notes / Observations
+          </label>
+          <textarea
+            value={ext.maintenanceNotes || ''}
+            onChange={(e) => handleExtinguisherChange(index, 'maintenanceNotes', e.target.value)}
+            className="w-full h-28 resize-none border border-slate-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+            placeholder="Condition, problems found, work done, recommendations for this unit..."
+          />
+        </div>
+      </div>
+
+      {/* Photo – neeche full width */}
+      <div>
+        <label className="block text-sm font-bold text-slate-700 mb-2">
+          Unit Picture <span className="text-xs text-slate-500 font-normal">(recommended)</span>
+        </label>
+        <div className="relative border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center hover:border-primary-500 transition-colors cursor-pointer">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                setExtinguishers(prev => prev.map((it, i) =>
+                  i === index ? { ...it, maintenanceUnitPhoto: file } : it
+                ));
+              }
+            }}
+            className="absolute inset-0 opacity-0 cursor-pointer"
+          />
+          {ext.maintenanceUnitPhoto ? (
+            <div className="flex flex-col items-center">
+              <img
+                src={URL.createObjectURL(ext.maintenanceUnitPhoto)}
+                alt="Unit preview"
+                className="h-24 w-24 object-cover rounded-lg mb-3 border shadow-sm"
+              />
+              <p className="text-xs text-slate-600">Click to change</p>
+            </div>
+          ) : (
+            <>
+              <Camera size={32} className="text-slate-400 mb-3" />
+              <p className="text-sm text-slate-500">Tap to upload unit photo</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  </>
+)}
                                 </div>
                             </div>
                         ))}
