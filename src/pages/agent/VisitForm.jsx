@@ -93,6 +93,29 @@ const FIRE_SYSTEMS = {
     { name: 'Booster Pump', price: 12000 }
   ]
 };
+
+const PARTNER_DATA = {
+  'FireShield Services': {
+    sellers: ['Ahmed Traders', 'Safety Zone Karachi', 'FirePro Distributors'],
+    brands: ['Kidde', 'Amerex', 'Fike', 'Ansul']
+  },
+  'SafetyFirst Refilling': {
+    sellers: ['Al-Noor Safety', 'Karachi Fire Equip', 'SafeTech Supplies'],
+    brands: ['Safex', 'Minimex', 'Ceasefire', 'Kanex']
+  },
+  'Al-Faisal Fire Equipment': {
+    sellers: ['Faisal & Sons', 'Gulshan Traders', 'Defence Safety Shop'],
+    brands: ['Jactone', 'LPG', 'Firechief', 'Gloria']
+  },
+  'Guardian Fire Solutions': {
+    sellers: ['Guardian Mart', 'Elite Safety', 'ProFire Karachi'],
+    brands: ['Buckeye', 'Badger', 'Strike First', 'Ogniochron']
+  },
+  'United Fire Protection': {
+    sellers: ['United Safety Hub', 'North Karachi Traders', 'FireGuard Supplies'],
+    brands: ['Powerex', 'H3R Performance', 'Otis', 'Chubb']
+  },
+};
     // Form Data
     const [formData, setFormData] = useState({
         customerId: null,
@@ -237,6 +260,19 @@ const uploadCustomerPhoto = async (file) => {
       if (i !== index) return item;
       if (item.isLocked) return item;
       const updated = { ...item, [field]: value, hasChanges: true };
+
+      if (field === 'partner') {
+        if (value === 'Other') {
+          // Other select kiya to auto-fill mat karo, user khud likhega
+          updated.seller = '';
+          updated.brand = '';
+        } else if (PARTNER_DATA[value]) {
+          // Dummy data se pehla seller aur pehla brand daal do
+          const partnerInfo = PARTNER_DATA[value];
+          updated.seller = partnerInfo.sellers[0] || '';     // pehla seller
+          updated.brand  = partnerInfo.brands[0] || '';      // pehla brand
+        }
+      }
 
       if (field === 'type' && value !== 'Other') updated.customType = '';
       if (field === 'partner' && value !== 'Other') updated.customPartner = '';
@@ -1144,24 +1180,54 @@ const uploadMaintenancePhoto = async (file, index) => {
         )}
       </div>
       <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Seller</label>
-        <input 
-          value={ext.seller} 
-          onChange={(e) => handleExtinguisherChange(index, 'seller', e.target.value)} 
-          className="input-field py-2 text-sm" 
-          placeholder="Seller Name" 
-        />
-      </div>
+  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Seller</label>
+  {ext.partner && ext.partner !== 'Other' && PARTNER_DATA[ext.partner] ? (
+    <select
+      value={ext.seller}
+      onChange={(e) => handleExtinguisherChange(index, 'seller', e.target.value)}
+      disabled={ext.isLocked}
+      className="input-field py-2 text-sm"
+    >
+      <option value="">Select Seller</option>
+      {PARTNER_DATA[ext.partner].sellers.map((seller, idx) => (
+        <option key={idx} value={seller}>{seller}</option>
+      ))}
+    </select>
+  ) : (
+    <input
+      value={ext.seller}
+      onChange={(e) => handleExtinguisherChange(index, 'seller', e.target.value)}
+      disabled={ext.isLocked}
+      className="input-field py-2 text-sm"
+      placeholder="Seller Name"
+    />
+  )}
+</div>
 
       <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Brand</label>
-        <input 
-          value={ext.brand} 
-          onChange={(e) => handleExtinguisherChange(index, 'brand', e.target.value)} 
-          className="input-field py-2 text-sm" 
-          placeholder="Brand Name" 
-        />
-      </div>
+  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Brand</label>
+  {ext.partner && ext.partner !== 'Other' && PARTNER_DATA[ext.partner] ? (
+    <select
+      value={ext.brand}
+      onChange={(e) => handleExtinguisherChange(index, 'brand', e.target.value)}
+      disabled={ext.isLocked}
+      className="input-field py-2 text-sm"
+    >
+      <option value="">Select Brand</option>
+      {PARTNER_DATA[ext.partner].brands.map((brand, idx) => (
+        <option key={idx} value={brand}>{brand}</option>
+      ))}
+    </select>
+  ) : (
+    <input
+      value={ext.brand}
+      onChange={(e) => handleExtinguisherChange(index, 'brand', e.target.value)}
+      disabled={ext.isLocked}
+      className="input-field py-2 text-sm"
+      placeholder="Brand Name"
+    />
+  )}
+</div>
 
       <div>
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Quantity</label>
