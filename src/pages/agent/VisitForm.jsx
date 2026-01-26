@@ -899,8 +899,10 @@ const uploadMaintenancePhoto = async (file, index) => {
                     <div className="space-y-4 mb-8">
                         {extinguishers.map((ext, index) => (
                             <div key={index} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 hover:shadow-md transition-all relative group">
-                                <div className="absolute -top-5 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                  {!ext.isLocked && (
+                                <div className="absolute -top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+
+        {/* Save button - sirf unlocked hone pe */}
+        {!ext.isLocked && (
             <button
                 onClick={() => {
                     setExtinguishers(prev =>
@@ -910,32 +912,40 @@ const uploadMaintenancePhoto = async (file, index) => {
                     );
                 }}
                 disabled={!ext.hasChanges}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1 shadow-sm transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm transition-all min-w-[70px] justify-center ${
                     ext.hasChanges
                         ? 'bg-green-600 hover:bg-green-700 text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
-                title="Save and lock this unit"
+                title="Save changes and lock this unit"
             >
-                <Save size={16} />
+                <Save size={14} />
                 Save
             </button>
         )}
 
-        {/* Edit button – sirf jab locked ho */}
+        {/* Edit button - sirf locked hone pe */}
         {ext.isLocked && (
             <button
-                onClick={() => setExtinguishers(prev => prev.map((item, i) => i === index ? { ...item, isLocked: false } : item))}
-                className="p-2 bg-white text-blue-500 rounded-lg shadow-sm border border-slate-200 hover:text-blue-600"
-                title="Edit / Unlock"
+                onClick={() => setExtinguishers(prev => prev.map((item, i) => 
+                    i === index ? { ...item, isLocked: false } : item
+                ))}
+                className="p-2 bg-white text-blue-600 rounded-lg shadow-sm border border-slate-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                title="Edit / Unlock this unit"
             >
                 <Pencil size={16} />
             </button>
         )}
-                                  <button onClick={() => removeExtinguisher(index)} className="p-2 bg-white text-red-500 rounded-lg shadow-sm border border-slate-200 hover:text-red-600">
-                                      <Trash size={16} />
-                                  </button>
-                              </div>
+
+        {/* Delete button - hamesha dikhega */}
+        <button
+            onClick={() => removeExtinguisher(index)}
+            className="p-2 bg-white text-red-600 rounded-lg shadow-sm border border-slate-200 hover:bg-red-50 hover:text-red-700 transition-colors"
+            title="Remove this unit"
+        >
+            <Trash size={16} />
+        </button>
+    </div>
 
                                 <div className="grid grid-cols-4 gap-2  mb-4 pb-4 border-b border-slate-200/50">
                                         {['Validation', 'Refill', 'New Unit', 'Maintenance'].map((m) => (
