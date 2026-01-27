@@ -27,6 +27,7 @@ import AgentManagement from './pages/admin/Agents';
 import GlobalMap from './pages/admin/Map';
 import AdminServices from './pages/admin/Services';
 import AdminCustomers from './pages/admin/Customers';
+import AgentPerformance from './pages/perfomance/Dashboard';
 
 
 // Placeholder Pages (Temporary)
@@ -69,7 +70,7 @@ function App() {
                   <Route path="visit" element={<VisitForm />} />
                   <Route path="customers" element={<Customers />} />
                     <Route path="customer/:id" element={<CustomerDetails />} />
-                  <Route path="performance" element={<div>Performance (Coming Soon)</div>} />
+                  <Route path="performance" element={<AgentPerformance />} />
                 </Routes>
               </ProtectedRoute>
             } />
