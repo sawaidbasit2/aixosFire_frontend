@@ -21,7 +21,6 @@ const VisitForm = () => {
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [mediaRecorder, setMediaRecorder] = useState(null);
-    const [voiceNoteSizeWarning, setVoiceNoteSizeWarning] = useState('');
     const [audioChunks, setAudioChunks] = useState([]);     // ← NEW: chunks store karenge
     const [searchResults, setSearchResults] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -32,38 +31,6 @@ const VisitForm = () => {
     const [unitVoiceWarnings, setUnitVoiceWarnings] = useState({});
     const debounceTimers = useRef([]);
 
-    // Component ke top pe add karo (useState se pehle)
-const ADDON_PRICES = {
-  firefightingSystem: {
-    'Sprinklers': 250,                // per head/unit approx
-    'Gate Valves': 500,
-    'Pipes': 800,                     // per section rough
-    'Zone Control Valves': 1800,
-    'Hydrants': 3500,
-    'Hose Reels': 1500,
-    'Foam System': 5000,
-    '': 0
-  },
-  fireAlarmSystem: {
-    'Manual Pull Stations': 200,
-    'Smoke Detectors': 150,
-    'Heat Detectors': 220,
-    'Notification Appliances (Horns/Strobes)': 400,
-    'Control Panel': 5000,            // basic panel
-    'Voice Evacuation System': 10000,
-    'Beam Detectors': 6000,
-    '': 0
-  },
-  pumpType: {
-    'Electric Fire Pump': 25000,      // small/medium
-    'Diesel Fire Pump': 40000,
-    'Jockey Pump': 6000,
-    'Centrifugal Pump': 15000,
-    'Vertical Turbine Pump': 30000,
-    'Booster Pump': 12000,
-    '': 0
-  }
-};
 
 const FIRE_SYSTEMS = {
   firefighting: [
@@ -116,6 +83,9 @@ const PARTNER_DATA = {
     brands: ['Powerex', 'H3R Performance', 'Otis', 'Chubb']
   },
 };
+
+    const MAX_VOICE_DURATION = 40;
+
     // Form Data
     const [formData, setFormData] = useState({
         customerId: null,
@@ -406,36 +376,29 @@ const uploadCustomerPhoto = async (file) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const recorder = new MediaRecorder(stream);
-            let chunks = [];
+            let localChunks = [];  // ← local variable, state se hataya
 
             recorder.ondataavailable = (e) => {
-                chunks.push(e.data);
-                setAudioChunks([...chunks]);
+              localChunks.push(e.data);
             };
 
             recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'audio/webm' });
-                const sizeInKB = (blob.size / 1024).toFixed(1);
-
-                if (blob.size > MAX_VOICE_NOTE_SIZE) {
-                    setVoiceNoteSizeWarning(
-                        `Voice note too large (${sizeInKB} KB) — Max allowed: 250 KB. Please try a shorter recording.`
-                    );
-                    setFormData(prev => ({ ...prev, voiceNote: null }));
-                } else {
-                    setVoiceNoteSizeWarning('');
-                    setFormData(prev => ({ ...prev, voiceNote: blob }));
-                }
-
-                chunks = [];
-                setAudioChunks([]);
+              if (localChunks.length === 0) {
+                console.warn("No chunks captured – recording might be empty");
+                return;
+              }
+              const blob = new Blob(localChunks, { type: 'audio/webm' });
+              setFormData(prev => ({ ...prev, voiceNote: blob }));
+              localChunks = [];
             };
 
             recorder.start();
             setMediaRecorder(recorder);
             setIsRecording(true);
             setRecordingTime(0);
-            setVoiceNoteSizeWarning('');
+            setRecordingIndex(null);
+
+            return () => stream.getTracks().forEach(track => track.stop());
         } catch (err) { alert("Mic access denied: " + err.message); }
     };
 
@@ -450,20 +413,19 @@ const uploadCustomerPhoto = async (file) => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream);
-    let chunks = [];
+    let localChunks = [];
 
-    recorder.ondataavailable = (e) => chunks.push(e.data);
+    recorder.ondataavailable = (e) => {
+      localChunks.push(e.data);
+    };
 
     recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: 'audio/webm' });
-      const sizeKB = (blob.size / 1024).toFixed(1);
-
-      if (blob.size > MAX_VOICE_NOTE_SIZE) {
-        setUnitVoiceWarnings(prev => ({
-          ...prev,
-          [index]: `Voice note too large (${sizeKB} KB) — max 250 KB`
-        }));
-      } else {
+      if (localChunks.length === 0) {
+        console.warn(`No chunks for unit ${index} – recording empty`);
+        return;
+      }
+      const blob = new Blob(localChunks, { type: 'audio/webm' });
+      
         setExtinguishers(prev => prev.map((item, i) =>
           i === index ? { ...item, maintenanceVoiceNote: blob } : item
         ));
@@ -472,15 +434,15 @@ const uploadCustomerPhoto = async (file) => {
           delete copy[index];
           return copy;
         });
-      }
-      chunks = [];
+      localChunks = [];
     };
 
     recorder.start();
     setMediaRecorder(recorder);
-    setRecordingIndex(index);           // ← important
+    setRecordingIndex(index);
     setIsRecording(true);
     setRecordingTime(0);
+    return () => stream.getTracks().forEach(track => track.stop());
   } catch (err) {
     alert("Mic access denied: " + err.message);
   }
@@ -493,18 +455,27 @@ const stopUnitRecording = () => {
     setRecordingIndex(null);
   }
 };
+    
     useEffect(() => {
         let interval;
         if (isRecording) {
-            interval = setInterval(() => {
-                setRecordingTime(prev => prev + 1);
-            }, 1000);
+          interval = setInterval(() => {
+            setRecordingTime(prev => {
+              const next = prev + 1;
+              if (next >= MAX_VOICE_DURATION) {
+                if (recordingIndex !== null) {
+                  stopUnitRecording();
+                } else {
+                  stopRecording();
+                }
+                clearInterval(interval);
+              }
+              return next;
+            });
+          }, 1000);
         }
-        return () => {
-            clearInterval(interval);
-            if (!isRecording) setRecordingTime(0);
-        };
-    }, [isRecording]);
+        return () => clearInterval(interval);
+    }, [isRecording, recordingIndex]);
 
     const removeExtinguisher = (index) => {
   setExtinguishers(prev =>
@@ -574,6 +545,37 @@ const uploadMaintenancePhoto = async (file, index) => {
     return null;
   }
 };
+
+  const uploadSiteVoice = async (blob, visitId) => {
+    if (!blob) return null;
+
+    try {
+      const fileName = `site-${visitId}-${Date.now()}.webm`;
+      const filePath = `site-voices/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from('visit-site-voice-notes')
+        .upload(filePath, blob, {
+          contentType: 'audio/webm',
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (error) {
+        console.error('Site voice upload error:', error);
+        return null;
+      }
+
+      const { data } = supabase.storage
+        .from('visit-site-voice-notes')
+        .getPublicUrl(filePath);
+
+      return data?.publicUrl || null;
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -667,6 +669,19 @@ const uploadMaintenancePhoto = async (file, index) => {
 
             if (visitError) throw visitError;
             const visitId = visitData[0].id;
+
+            // --- SITE ASSESSMENT VOICE ---
+if (formData.voiceNote) {
+  const siteVoiceUrl = await uploadSiteVoice(formData.voiceNote, visitId);
+
+  if (siteVoiceUrl) {
+    await supabase
+      .from('visits')
+      .update({ voice_note_url: siteVoiceUrl })
+      .eq('id', visitId);
+  }
+}
+
 
             // 4. Insert Inventory
             if (extinguishers.length > 0) {
@@ -1435,7 +1450,7 @@ const uploadMaintenancePhoto = async (file, index) => {
         {/* Left: Voice Note */}
         <div className="bg-white p-5 rounded-xl border border-slate-200">
           <label className="block text-sm font-bold text-slate-700 mb-3">
-            Unit Voice Note (max 250 KB)
+            Unit Voice Note (Max 40 seconds)
           </label>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -1456,11 +1471,17 @@ const uploadMaintenancePhoto = async (file, index) => {
             <div className="flex-1">
               <p className="font-medium text-slate-800 text-sm">
                 {recordingIndex === index && isRecording
-                  ? `Recording... ${recordingTime}s`
+                  ? `Recording... ${recordingTime}s / 40s`
                   : ext.maintenanceVoiceNote
                   ? 'Voice note recorded'
-                  : 'Hold to record'}
+                  : 'Hold to record (Max 40s)'}
               </p>
+              {recordingIndex === index && isRecording && recordingTime >= 35 && (
+                <p className="text-sm text-red-600 mt-1 font-medium flex items-center gap-1">
+                  <AlertTriangle size={14} />
+                  Recording will stop at 40 seconds
+                </p>
+              )}
               <p className="text-xs text-slate-500 mt-1">
                 Condition, issues, recommendations...
               </p>
@@ -1581,7 +1602,7 @@ const uploadMaintenancePhoto = async (file, index) => {
                     <div className="space-y-6">
                         <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
                             <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">
-                                Site Voice Note (max 250 KB)
+                              Site Voice Note <span className="text-slate-400">(Max 40 seconds)</span>
                             </label>
 
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -1595,14 +1616,12 @@ const uploadMaintenancePhoto = async (file, index) => {
                                     {isRecording ? <Square size={24} /> : <Mic size={24} />}
                                 </button>
                                 <div className="flex-1">
-                                    <p className="font-bold text-slate-900">{isRecording ? `Recording... ${recordingTime}s` : formData.voiceNote ? 'Voice Note Captured' : 'Hold to Record'}</p>
-                                    <p className="text-sm text-slate-500 mt-1">
-                                        Max allowed size: <strong>250 KB</strong> • Record shorter if warning appears
+                                    <p className="font-bold text-slate-900">{isRecording  ? `Recording... ${recordingTime}s / 40s` : formData.voiceNote ? 'Voice Note Captured' : 'Hold to Record (Max 40s)'}
                                     </p>
-
-                                    {voiceNoteSizeWarning && (
-                                        <p className="text-sm text-red-600 mt-2 font-medium flex items-center gap-2">
-                                            <AlertTriangle size={16} /> {voiceNoteSizeWarning}
+                                      {isRecording && recordingTime >= 35 && (
+                                        <p className="text-sm text-red-600 mt-1 font-medium flex items-center gap-1">
+                                            <AlertTriangle size={14} />
+                                          Recording will stop at 40 seconds
                                         </p>
                                     )}
                                 </div>
@@ -1616,7 +1635,6 @@ const uploadMaintenancePhoto = async (file, index) => {
                                         <button
                                             onClick={() => {
                                                 setFormData(prev => ({ ...prev, voiceNote: null }));
-                                                setVoiceNoteSizeWarning('');
                                             }}
                                             className="text-red-500 hover:text-red-700 text-sm font-medium flex items-center gap-1"
                                         >
