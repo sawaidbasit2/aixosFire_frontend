@@ -13,6 +13,8 @@ import {
   Area,
 } from "recharts";
 import { ClipboardList, DollarSign, RefreshCcw, Layers } from "lucide-react";
+// import { useRouter } from 'react-router-dom'
+import { Link } from 'react-router-dom';
 
 /* ---------- Reusable Card ---------- */
 const StatCard = ({ icon: Icon, title, value, color }) => (
@@ -288,11 +290,15 @@ const AgentPerformance = () => {
 
             <tbody>
               {tableData.map((row, index) => (
-                <tr
+                <Link
                   key={row.category}
-                  className={`border-b last:border-0 transition
-              ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}
-              hover:bg-blue-50`}
+                  to={`/agent/performance/${row.category.toLowerCase()}`}
+                  className="contents"
+                >
+                <tr
+                  className={`cursor-pointer border-b last:border-0 transition
+                    ${index % 2 === 0 ? "bg-white" : "bg-slate-50"}
+                    hover:bg-blue-50`}
                 >
                   <td className="px-5 py-4 font-medium text-slate-900">
                     {row.category}
@@ -323,6 +329,7 @@ const AgentPerformance = () => {
                     ${row.value}
                   </td>
                 </tr>
+                </Link>
               ))}
 
               {/* ---------- GRAND TOTAL ROW ---------- */}
