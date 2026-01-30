@@ -84,6 +84,40 @@ const PARTNER_DATA = {
   },
 };
 
+const FIRE_FIGHTING_CATEGORIES = {
+  "Fire Protection System": [
+    "Sprinklers",
+    "Pipes",
+    "Gate Valves",
+    "Zone Control Valves",
+    "Hydrants",
+    "Hose Reels",
+    "Foam System"
+  ],
+  "Fire Alarm System": [
+    "Manual Pull Stations",
+    "Smoke Detectors",
+    "Heat Detectors",
+    "Notification Appliances",
+    "Control Panel",
+    "Voice Evacuation System",
+    "Beam Detectors"
+  ],
+  "Fire Pumps": [
+    "Electric Fire Pump",
+    "Diesel Fire Pump",
+    "Jockey Pump",
+    "Centrifugal Pump",
+    "Vertical Turbine Pump",
+    "Booster Pump"
+  ],
+  "Tanks": [
+    "Water Storage Tank",
+    "Foam Tank",
+    "Pressure Tank"
+  ]
+};
+
     const MAX_VOICE_DURATION = 40;
 
     // Form Data
@@ -101,25 +135,86 @@ const PARTNER_DATA = {
     const [qrPreview, setQrPreview] = useState(null);
 
     const [extinguishers, setExtinguishers] = useState([
-        {
-            mode: 'Validation', // Validation, Refill, New Unit
-            type: 'ABC Dry Powder', customType: '', capacity: '6kg', quantity: 1,
-            systemItem: '',
-            brand: '', seller: '', partner: '', customPartner: '', refillStatus: 'Required',
-            price: 180, expiryDate: '', condition: 'Good',
-            firefightingSystem: '',
-            fireAlarmSystem: '',
-            pumpType: '',
+  {
+    mode: 'Validation',
+    type: 'ABC Dry Powder',
+    customType: '',
+    capacity: '6kg',
+    quantity: 1,
+    brand: '',
+    seller: '',
+    partner: '',
+    customPartner: '',
+    refillStatus: 'Required',
+    price: 180,
+    expiryDate: '',
+    condition: 'Good',
+    firefightingSystem: '',
+    fireAlarmSystem: '',
+    pumpType: '',
+    maintenanceVoiceNote: null,
+    maintenanceNotes: '',
+    maintenanceUnitPhoto: null,
+    isLocked: false,
+    hasChanges: false,
+    newUnits: []  // ← Yeh add karo (empty array for sub-units)
+  }
+]);
 
-            maintenanceVoiceNote: null,
-            maintenanceNotes: '',
-            maintenanceUnitPhoto: null,
+const handleNewUnitChange = (unitIndex, field, value) => {
+  setExtinguishers(prev =>
+    prev.map((item, i) => {
+      if (i !== unitIndex) return item;
+      if (item.isLocked) return item;
 
-            isLocked: false,
-            hasChanges: false
-        }
-    ]);
+      const updated = { ...item, [field]: value, hasChanges: true };
 
+      // Auto-set unit type based on material (if it's a pipe)
+      if (field === 'material') {
+        const isPipe = ['Pipes'].includes(value); // Add more pipe-related names if needed
+        updated.unit = isPipe ? 'Meter' : 'Pieces';
+      }
+
+      // Recalculate price if needed (you can expand this later)
+      if (['firefightingSystem', 'material', 'unit', 'quantity'].includes(field)) {
+        // Your existing price logic or keep base 180
+        updated.price = 180; // Placeholder – you can customize per material later
+      }
+
+      return updated;
+    })
+  );
+};
+
+const addNewUnit = (extIndex) => {
+  setExtinguishers(prev =>
+    prev.map((item, i) => {
+      if (i !== extIndex) return item;
+
+      // Agar required fields empty hain to kuch mat add kar
+      if (!item.firefightingSystem || !item.material || (item.quantity || 0) < 1) {
+        alert("Please select Fire Fighting System, Material and Quantity before adding.");
+        return item;
+      }
+
+      const newSubUnit = {
+        firefightingSystem: item.firefightingSystem,
+        material: item.material,
+        unit: item.unit || 'Pieces',
+        quantity: item.quantity || 1
+      };
+
+      return {
+        ...item,
+        newUnits: [...(item.newUnits || []), newSubUnit],
+        firefightingSystem: '',   // reset
+        material: '', 
+        unit: 'Pieces',
+        quantity: 1
+      };
+    })
+  );
+};
     useEffect(() => {
     extinguishers.forEach((ext, index) => {
         if (ext.mode === 'Validation' && ext.hasChanges && !ext.isLocked) {
@@ -231,18 +326,6 @@ const uploadCustomerPhoto = async (file) => {
       if (item.isLocked) return item;
       const updated = { ...item, [field]: value, hasChanges: true };
 
-      if (field === 'partner') {
-        if (value === 'Other') {
-          // Other select kiya to auto-fill mat karo, user khud likhega
-          updated.seller = '';
-          updated.brand = '';
-        } else if (PARTNER_DATA[value]) {
-          // Dummy data se pehla seller aur pehla brand daal do
-          const partnerInfo = PARTNER_DATA[value];
-          updated.seller = partnerInfo.sellers[0] || '';     // pehla seller
-          updated.brand  = partnerInfo.brands[0] || '';      // pehla brand
-        }
-      }
 
       if (field === 'type' && value !== 'Other') updated.customType = '';
       if (field === 'partner' && value !== 'Other') updated.customPartner = '';
@@ -288,7 +371,8 @@ const uploadCustomerPhoto = async (file) => {
             maintenanceNotes: '',             // ← Add yeh
             maintenanceUnitPhoto: null,
             isLocked: false,
-            hasChanges: false
+            hasChanges: false,
+            newUnits: []
         }]);
     };
 
@@ -683,49 +767,101 @@ if (formData.voiceNote) {
 }
 
 
-            // 4. Insert Inventory
-            if (extinguishers.length > 0) {
-                const inventoryRows = await Promise.all(
-                extinguishers.map(async (item, idx) => {
-                let voiceUrl = null;
-                let photoUrl = null;
+// 4. Insert Inventory
+if (extinguishers.length > 0) {
+  const inventoryRows = await Promise.all(
+    extinguishers.flatMap(async (item, idx) => {
+      const rows = [];
 
-                if (item.mode === 'Maintenance') {
-                    if (item.maintenanceVoiceNote) {
-                    voiceUrl = await uploadMaintenanceVoice(item.maintenanceVoiceNote, idx);
-                    }
-                    if (item.maintenanceUnitPhoto) {
-                    photoUrl = await uploadMaintenancePhoto(item.maintenanceUnitPhoto, idx);
-                    }
-                }
+      let voiceUrl = null;
+      let photoUrl = null;
+      if (item.mode === 'Maintenance') {
+        if (item.maintenanceVoiceNote) {
+          voiceUrl = await uploadMaintenanceVoice(item.maintenanceVoiceNote, idx);
+        }
+        if (item.maintenanceUnitPhoto) {
+          photoUrl = await uploadMaintenancePhoto(item.maintenanceUnitPhoto, idx);
+        }
+      }
 
-                return {
-                    customer_id: finalCustId,
-                    visit_id: visitId,
-                    type: item.type,
-                    capacity: item.capacity,
-                    quantity: item.quantity,
-                    expiry_date: item.expiryDate || null,
-                    condition: item.condition,
-                    status: item.mode === 'New Unit' ? 'New' : (item.mode === 'Refill' ? 'Refilled' : 'Valid'),
-                    brand: item.brand,
-                    seller: item.seller,
-                    partner: item.partner,
-                    price: item.price,
-                    firefighting_system: item.firefightingSystem || null,
-                    fire_alarm_system: item.fireAlarmSystem || null,
-                    pump_type: item.pumpType || null,
+      if (item.mode === 'New Unit' || item.mode === 'Maintenance') {
+        // New Unit aur Maintenance dono ke liye sirf sub-units rows banao
+        if (item.newUnits?.length > 0) {
+          item.newUnits.forEach((sub) => {
+            let subPrice = 180;
+            const ffItem = FIRE_SYSTEMS.firefighting.find(it => it.name === sub.firefightingSystem);
+            if (ffItem) subPrice += ffItem.price;
 
-                    maintenance_notes: item.maintenanceNotes || null,
-                    maintenance_voice_url: voiceUrl,
-                    maintenance_unit_photo_url: photoUrl,
-                };
-                }));
+            const subRow = {
+              customer_id: finalCustId,
+              visit_id: visitId,
+              type: null,                     // ← Maintenance mein type null
+              capacity: null,                 // ← Maintenance mein capacity null
+              quantity: sub.quantity || 1,
+              expiry_date: null,
+              condition: null,
+              status: item.mode === 'New Unit' ? 'New' : 'Maintained',  // ← YEH CHANGE! Maintenance ke liye 'Maintained'
+              brand: null,
+              seller: null,
+              partner: item.partner || null,
+              price: subPrice,
+              firefighting_system: sub.firefightingSystem || null,
+              fire_alarm_system: null,
+              pump_type: null,
+              maintenance_notes: item.maintenanceNotes || null,
+              maintenance_voice_url: voiceUrl,          // sab sub-units pe same voice (ya sirf pehle pe daal sakta hai)
+              maintenance_unit_photo_url: photoUrl,     // same
+              is_sub_unit: true,
+              unit: sub.unit || 'Pieces'
+            };
+            rows.push(subRow);
+          });
+        } else {
+          // Agar sub-unit nahi add kiya to warning
+          console.warn(`${item.mode} mode mein koi item add nahi kiya gaya`);
+        }
+      } else {
+        // Validation aur Refill ke liye normal parent row
+        const mainRow = {
+          customer_id: finalCustId,
+          visit_id: visitId,
+          type: item.type || null,
+          capacity: item.capacity || null,
+          quantity: item.quantity || 1,
+          expiry_date: item.expiryDate || null,
+          condition: item.condition || null,
+          status: item.mode === 'Refill' ? 'Refilled' : 'Valid',
+          brand: item.brand || null,
+          seller: item.seller || null,
+          partner: item.partner || null,
+          price: item.price || 180,
+          firefighting_system: item.firefightingSystem || null,
+          fire_alarm_system: item.fireAlarmSystem || null,
+          pump_type: item.pumpType || null,
+          maintenance_notes: item.maintenanceNotes || null,
+          maintenance_voice_url: voiceUrl,
+          maintenance_unit_photo_url: photoUrl,
+          is_sub_unit: false,
+          unit: item.unit || null
+        };
+        rows.push(mainRow);
+      }
 
-                const { error: invError } = await supabase.from('extinguishers').insert(inventoryRows);
-                if (invError) throw invError;
-            }
+      return rows;
+    })
+  );
 
+  const flatRows = inventoryRows.flat();
+
+  if (flatRows.length > 0) {
+    console.log("Final rows going to DB:", flatRows);
+    const { error: invError } = await supabase.from('extinguishers').insert(flatRows);
+    if (invError) {
+      console.error("Insert error:", invError);
+      throw invError;
+    }
+  }
+}
             navigate('/agent/dashboard');
         } catch (error) {
             console.error(error);
@@ -1014,40 +1150,43 @@ if (formData.voiceNote) {
                                         ))}
                                     </div>
                                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4 pb-4'>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Type</label>
-                                        <select value={ext.type} onChange={(e) => handleExtinguisherChange(index, 'type', e.target.value)} disabled={ext.isLocked} className="input-field py-2 text-sm">
-                                            <option>ABC Dry Powder</option>
-                                            <option>CO2 - Carbon Dioxide</option>
-                                            <option>Water Type</option>
-                                            <option>Mechanical Foam</option>
-                                            <option>Wet Chemical</option>
-                                            <option>Other</option>           {/* ← yeh add karo */}
-                                        </select>
-
-                                {ext.type === 'Other' && (
-                                    <div className="mt-3 animate-fade-in">
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-                                            Specify Type
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={ext.customType || ''}
-                                            onChange={(e) => handleExtinguisherChange(index, 'customType', e.target.value)}
-                                            placeholder="e.g. Clean Agent, Dry Chemical Special, etc."
-                                            className="input-field py-2 text-sm"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Capacity</label>
-                                        <select value={ext.capacity} disabled={ext.isLocked} onChange={(e) => handleExtinguisherChange(index, 'capacity', e.target.value)} className="input-field py-2 text-sm">
-                                            <option>1kg</option><option>2kg</option><option>4kg</option><option>6kg</option><option>9kg</option><option>25kg</option>
-                                        </select>
-                                    </div>
-                                </div>
+  {/* Type and Capacity sirf if mode != 'Maintenance' */}
+  {ext.mode !== 'Maintenance' && (
+    <>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Type</label>
+        <select value={ext.type} onChange={(e) => handleExtinguisherChange(index, 'type', e.target.value)} disabled={ext.isLocked} className="input-field py-2 text-sm">
+          <option>ABC Dry Powder</option>
+          <option>CO2 - Carbon Dioxide</option>
+          <option>Water Type</option>
+          <option>Mechanical Foam</option>
+          <option>Wet Chemical</option>
+          <option>Other</option>
+        </select>
+        {ext.type === 'Other' && (
+          <div className="mt-3 animate-fade-in">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+              Specify Type
+            </label>
+            <input
+              type="text"
+              value={ext.customType || ''}
+              onChange={(e) => handleExtinguisherChange(index, 'customType', e.target.value)}
+              placeholder="e.g. Clean Agent, Dry Chemical Special, etc."
+              className="input-field py-2 text-sm"
+            />
+          </div>
+        )}
+      </div>
+      <div>
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Capacity</label>
+        <select value={ext.capacity} disabled={ext.isLocked} onChange={(e) => handleExtinguisherChange(index, 'capacity', e.target.value)} className="input-field py-2 text-sm">
+          <option>1kg</option><option>2kg</option><option>4kg</option><option>6kg</option><option>9kg</option><option>25kg</option>
+        </select>
+      </div>
+    </>
+  )}
+</div>
 
                                 {/* Flow-based Fields */}
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in">
@@ -1071,199 +1210,199 @@ if (formData.voiceNote) {
                                     )}
 
                                     {ext.mode === 'New Unit' && (
-  <>
-  <div className="col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-  {/* Fire Fighting System */}
+  <div className="col-span-4 space-y-6 animate-fade-in">
+
+      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Fire Fighting System */}
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+            Fire Fighting System
+          </label>
+          <select
+            value={ext.firefightingSystem || ''}
+            onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
+            disabled={ext.isLocked}
+            className="input-field py-2 text-sm"
+          >
+            <option value="">Select...</option>
+            {Object.keys(FIRE_FIGHTING_CATEGORIES).map(sys => (
+              <option key={sys} value={sys}>{sys}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Material */}
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+            Material
+          </label>
+          <select
+            value={ext.material || ''}
+            onChange={(e) => {
+              const mat = e.target.value;
+              handleExtinguisherChange(index, 'material', mat);
+              // Auto-set unit
+              handleExtinguisherChange(index, 'unit', getDefaultUnit(mat));
+            }}
+            disabled={ext.isLocked || !ext.firefightingSystem}
+            className="input-field py-2 text-sm"
+          >
+            <option value="">Select Material</option>
+            {ext.firefightingSystem &&
+              FIRE_FIGHTING_CATEGORIES[ext.firefightingSystem]?.map(mat => (
+                <option key={mat} value={mat}>{mat}</option>
+              ))}
+          </select>
+        </div>
+
+        {/* Unit (Meter / Pieces) */}
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+            Unit
+          </label>
+          <select
+            value={ext.unit || 'Pieces'}
+            onChange={(e) => handleExtinguisherChange(index, 'unit', e.target.value)}
+            disabled={ext.isLocked}
+            className="input-field py-2 text-sm"
+          >
+            <option value="Meter">Meter</option>
+            <option value="Pieces">Pieces</option>
+          </select>
+        </div>
+
+        {/* Quantity */}
+        <div>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+            Quantity
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={ext.quantity || 1}
+            onChange={(e) => handleExtinguisherChange(index, 'quantity', Number(e.target.value) || 1)}
+            disabled={ext.isLocked}
+            className="input-field py-2 text-sm"
+          />
+        </div>
+
+        <button
+  type="button"
+  onClick={() => addNewUnit(index)}
+  disabled={
+    !ext.firefightingSystem || 
+    !ext.material || 
+    (ext.quantity || 0) < 1 ||
+    ext.isLocked
+  }
+  className={`w-full text-xs max-w-[100px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+    (!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
+      ? 'bg-gray-400 cursor-not-allowed text-white'
+      : 'bg-primary-600 hover:bg-primary-700 text-white'
+  }`}
+>
+  <Plus size={18} /> Add This Item
+</button>
+      </div>
+
+      <div className='col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4'>
   <div>
     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-      Fire Fighting System
+      Partner
     </label>
     <select
-    value={ext.firefightingSystem || ''}
-    onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
-    className="input-field py-2 text-sm"
+      value={ext.partner || ''}
+      onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)}
+      className="input-field py-2 text-sm"
     >
-        <option value="">Select...</option>
-        {FIRE_SYSTEMS.firefighting.map((item) => (
-        <option key={item.name} value={item.name}>
-        {item.name}
-      </option>
-      ))}
-        <option value="Other">Other</option>
+      <option value="">Select Partner</option>
+      <option>FireShield Services</option>
+      <option>SafetyFirst Refilling</option>
+      <option>Al-Faisal Fire Equipment</option>
+      <option>Guardian Fire Solutions</option>
+      <option>United Fire Protection</option>
+      <option>Other</option>
     </select>
-    {ext.firefightingSystem === 'Other' && (
-        <input
-        type="text"
-        placeholder="Specify Other"
-        value={ext.customFirefighting || ''}
-        onChange={(e) => handleExtinguisherChange(index, 'customFirefighting', e.target.value)}
-        className="input-field py-2 mt-2 text-sm"
-        />
-    )}
-    </div>
-
-    {/* Fire Alarm System */}
-    <div>
-    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-        Fire Alarm System
-    </label>
-    <select
-        value={ext.fireAlarmSystem || ''}
-        onChange={(e) => handleExtinguisherChange(index, 'fireAlarmSystem', e.target.value)}
-        className="input-field py-2 text-sm"
-    >
-        <option value="">Select...</option>
-        {FIRE_SYSTEMS.fireAlarm.map((item) => (
-        <option key={item.name} value={item.name}>
-        {item.name}
-      </option>
-      ))}
-    <option value="Other">Other</option>
-    </select>
-    {ext.fireAlarmSystem === 'Other' && (
-        <input
-        type="text"
-        placeholder="Specify Other"
-        value={ext.customFireAlarm || ''}
-        onChange={(e) => handleExtinguisherChange(index, 'customFireAlarm', e.target.value)}
-        className="input-field py-2 mt-2 text-sm"
-        />
-    )}
-    </div>
-
-      {/* Pump Type */}
-      <div>
+    {ext.partner === 'Other' && (
+      <div className="mt-3 animate-fade-in">
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-          Pump Type
+          Specify Partner Name
         </label>
-        <select
-          value={ext.pumpType || ''}
-          onChange={(e) => handleExtinguisherChange(index, 'pumpType', e.target.value)}
+        <input
+          type="text"
+          value={ext.customPartner || ''}
+          onChange={(e) => handleExtinguisherChange(index, 'customPartner', e.target.value)}
+          placeholder="e.g. ABC Fire Refilling Co."
           className="input-field py-2 text-sm"
-        >
-          <option value="">Select...</option>
-          {FIRE_SYSTEMS.pumps.map((item) => (
-            <option key={item.name} value={item.name}>
-              {item.name}
-            </option>
-          ))}
-          <option value="Other">Other</option>
-        </select>
-        {ext.pumpType === 'Other' && (
-          <input
-            type="text"
-            placeholder="Specify Other"
-            value={ext.customPump || ''}
-            onChange={(e) => handleExtinguisherChange(index, 'customPump', e.target.value)}
-            className="input-field py-2 mt-2 text-sm"
-          />
-        )}
+        />
       </div>
-    </div>
-    <div className='col-span-4 grid grid-cols-1 md:grid-cols-4 gap-4'>
-        <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-          Partner
-        </label>
-        <select
-          value={ext.partner || ''}
-          onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)}
-          className="input-field py-2 text-sm"
-        >
-          <option value="">Select Partner</option>
-          <option>FireShield Services</option>
-          <option>SafetyFirst Refilling</option>
-          <option>Al-Faisal Fire Equipment</option>
-          <option>Guardian Fire Solutions</option>
-          <option>United Fire Protection</option>
-          <option>Other</option>
-        </select>
+    )}
+  </div>
+  {/* Seller aur Brand wale div remove kar diye */}
+</div>
 
-        {ext.partner === 'Other' && (
-          <div className="mt-3 animate-fade-in">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-              Specify Partner Name
-            </label>
-            <input
-              type="text"
-              value={ext.customPartner || ''}
-              onChange={(e) => handleExtinguisherChange(index, 'customPartner', e.target.value)}
-              placeholder="e.g. ABC Fire Refilling Co."
-              className="input-field py-2 text-sm"
-            />
+{ext.newUnits?.length > 0 && (
+  <div className="mt-6 space-y-4">
+    <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+      Added Sub-Units
+    </h4>
+
+    {/* Table-like container */}
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Header Row */}
+      <div className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] bg-slate-50 border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+        <div>Fire Fighting System</div>
+        <div>Material</div>
+        <div>Unit</div>
+        <div>Quantity</div>
+        <div className="text-right">Action</div>
+      </div>
+
+      {/* Rows */}
+      {ext.newUnits.map((subUnit, subIndex) => (
+        <div
+          key={subIndex}
+          className={`grid grid-cols-[2fr_2fr_1fr_1fr_auto] items-center px-4 py-3.5 text-sm border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70 transition-colors ${
+            subIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
+          }`}
+        >
+          <div className="font-medium text-slate-800">
+            {subUnit.firefightingSystem || <span className="text-slate-400">N/A</span>}
           </div>
-        )}
-      </div>
-      <div>
-  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Seller</label>
-  {ext.partner && ext.partner !== 'Other' && PARTNER_DATA[ext.partner] ? (
-    <select
-      value={ext.seller}
-      onChange={(e) => handleExtinguisherChange(index, 'seller', e.target.value)}
-      disabled={ext.isLocked}
-      className="input-field py-2 text-sm"
-    >
-      <option value="">Select Seller</option>
-      {PARTNER_DATA[ext.partner].sellers.map((seller, idx) => (
-        <option key={idx} value={seller}>{seller}</option>
+          <div className="text-slate-700">
+            {subUnit.material || <span className="text-slate-400">N/A</span>}
+          </div>
+          <div className="text-slate-600">
+            {subUnit.unit || 'Pieces'}
+          </div>
+          <div className="font-medium text-slate-800">
+            {subUnit.quantity || 1}
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                setExtinguishers(prev =>
+                  prev.map((item, i) =>
+                    i === index
+                      ? { ...item, newUnits: item.newUnits.filter((_, si) => si !== subIndex) }
+                      : item
+                  )
+                );
+              }}
+              className="p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-300"
+              title="Remove this sub-unit"
+            >
+              <Trash size={16} />
+            </button>
+          </div>
+        </div>
       ))}
-    </select>
-  ) : (
-    <input
-      value={ext.seller}
-      onChange={(e) => handleExtinguisherChange(index, 'seller', e.target.value)}
-      disabled={ext.isLocked}
-      className="input-field py-2 text-sm"
-      placeholder="Seller Name"
-    />
-  )}
-</div>
-
-      <div>
-  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Brand</label>
-  {ext.partner && ext.partner !== 'Other' && PARTNER_DATA[ext.partner] ? (
-    <select
-      value={ext.brand}
-      onChange={(e) => handleExtinguisherChange(index, 'brand', e.target.value)}
-      disabled={ext.isLocked}
-      className="input-field py-2 text-sm"
-    >
-      <option value="">Select Brand</option>
-      {PARTNER_DATA[ext.partner].brands.map((brand, idx) => (
-        <option key={idx} value={brand}>{brand}</option>
-      ))}
-    </select>
-  ) : (
-    <input
-      value={ext.brand}
-      onChange={(e) => handleExtinguisherChange(index, 'brand', e.target.value)}
-      disabled={ext.isLocked}
-      className="input-field py-2 text-sm"
-      placeholder="Brand Name"
-    />
-  )}
-</div>
-
-      <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Quantity</label>
-        <input 
-          type="number" 
-          value={ext.quantity} 
-          onChange={(e) => handleExtinguisherChange(index, 'quantity', parseInt(e.target.value) || 1)} 
-          className="input-field py-2 text-sm" 
-        />
-      </div>
     </div>
+  </div>
+)}
 
-    
-
-    {['Other', 'Other', 'Other'].includes(ext.firefightingSystem) || ['Other', 'Other', 'Other'].includes(ext.fireAlarmSystem) || ['Other', 'Other', 'Other'].includes(ext.pumpType) ? (
-      <div className="col-span-4 mt-2 text-sm text-orange-700 font-medium">
-       Note: Price and availability confirmed by the company
-      </div>
-    ) : null}
-
-    <div className="col-span-4 mt-6 pt-4 border-t border-slate-200 grid grid-cols-2 md:grid-cols-5 gap-4">
+    {/* ─── Price (you'll likely want to change this logic later) ─── */}
+   <div className="col-span-4 mt-6 pt-4 border-t border-slate-200 grid grid-cols-2 md:grid-cols-5 gap-4">
       <div>
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Base Price</label>
         <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
@@ -1299,7 +1438,7 @@ if (formData.voiceNote) {
         </div>
       </div>
     </div>
-  </>
+    </div>
 )}
 
 
@@ -1353,94 +1492,184 @@ if (formData.voiceNote) {
 
                                     {ext.mode === 'Maintenance' && (
   <>
-    <div className="col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      {/* Fire Fighting System */}
-      <div>
+    <div className="col-span-4 space-y-6 animate-fade-in">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Fire Fighting System */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+              Fire Fighting System
+            </label>
+            <select
+              value={ext.firefightingSystem || ''}
+              onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
+              disabled={ext.isLocked}
+              className="input-field py-2 text-sm"
+            >
+              <option value="">Select...</option>
+              {Object.keys(FIRE_FIGHTING_CATEGORIES).map(sys => (
+                <option key={sys} value={sys}>{sys}</option>
+              ))}
+            </select>
+          </div>
+          {/* Material */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+              Material
+            </label>
+            <select
+              value={ext.material || ''}
+              onChange={(e) => {
+                const mat = e.target.value;
+                handleExtinguisherChange(index, 'material', mat);
+                handleExtinguisherChange(index, 'unit', getDefaultUnit(mat));
+              }}
+              disabled={ext.isLocked || !ext.firefightingSystem}
+              className="input-field py-2 text-sm"
+            >
+              <option value="">Select Material</option>
+              {ext.firefightingSystem &&
+                FIRE_FIGHTING_CATEGORIES[ext.firefightingSystem]?.map(mat => (
+                  <option key={mat} value={mat}>{mat}</option>
+                ))}
+            </select>
+          </div>
+          {/* Unit */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+              Unit
+            </label>
+            <select
+              value={ext.unit || 'Pieces'}
+              onChange={(e) => handleExtinguisherChange(index, 'unit', e.target.value)}
+              disabled={ext.isLocked}
+              className="input-field py-2 text-sm"
+            >
+              <option value="Meter">Meter</option>
+              <option value="Pieces">Pieces</option>
+            </select>
+          </div>
+          {/* Quantity */}
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+              Quantity
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={ext.quantity || 1}
+              onChange={(e) => handleExtinguisherChange(index, 'quantity', Number(e.target.value) || 1)}
+              disabled={ext.isLocked}
+              className="input-field py-2 text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => addNewUnit(index)}
+            disabled={!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1 || ext.isLocked}
+            className={`w-full text-xs max-w-[100px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${
+              (!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
+                ? 'bg-gray-400 cursor-not-allowed text-white'
+                : 'bg-primary-600 hover:bg-primary-700 text-white'
+            }`}
+          >
+            <Plus size={18} /> Add
+          </button>
+        </div>
+        {/* Partner (same as New Unit) */}
+        <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+          <div>
+    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+      Partner
+    </label>
+    <select
+      value={ext.partner || ''}
+      onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)}
+      className="input-field py-2 text-sm"
+    >
+      <option value="">Select Partner</option>
+      <option>FireShield Services</option>
+      <option>SafetyFirst Refilling</option>
+      <option>Al-Faisal Fire Equipment</option>
+      <option>Guardian Fire Solutions</option>
+      <option>United Fire Protection</option>
+      <option>Other</option>
+    </select>
+    {ext.partner === 'Other' && (
+      <div className="mt-3 animate-fade-in">
         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-          Fire Fighting System
+          Specify Partner Name
         </label>
-        <select
-          value={ext.firefightingSystem || ''}
-          onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
+        <input
+          type="text"
+          value={ext.customPartner || ''}
+          onChange={(e) => handleExtinguisherChange(index, 'customPartner', e.target.value)}
+          placeholder="e.g. ABC Fire Refilling Co."
           className="input-field py-2 text-sm"
-        >
-          <option value="">Select...</option>
-          {FIRE_SYSTEMS.firefighting.map((item) => (
-            <option key={item.name} value={item.name}>
-              {item.name}
-            </option>
-          ))}
-          <option value="Other">Other</option>
-        </select>
-        {ext.firefightingSystem === 'Other' && (
-          <input
-            type="text"
-            placeholder="Specify Other"
-            value={ext.customFirefighting || ''}
-            onChange={(e) => handleExtinguisherChange(index, 'customFirefighting', e.target.value)}
-            className="input-field py-2 mt-2 text-sm"
-          />
-        )}
+        />
+      </div>
+    )}
+  </div>
+        </div>
+        {ext.newUnits?.length > 0 && (
+  <div className="mt-6 space-y-4">
+    <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+      Added Sub-Units
+    </h4>
+
+    {/* Table-like container */}
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* Header Row */}
+      <div className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] bg-slate-50 border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+        <div>Fire Fighting System</div>
+        <div>Material</div>
+        <div>Unit</div>
+        <div>Quantity</div>
+        <div className="text-right">Action</div>
       </div>
 
-      {/* Fire Alarm System */}
-      <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-          Fire Alarm System
-        </label>
-        <select
-          value={ext.fireAlarmSystem || ''}
-          onChange={(e) => handleExtinguisherChange(index, 'fireAlarmSystem', e.target.value)}
-          className="input-field py-2 text-sm"
+      {/* Rows */}
+      {ext.newUnits.map((subUnit, subIndex) => (
+        <div
+          key={subIndex}
+          className={`grid grid-cols-[2fr_2fr_1fr_1fr_auto] items-center px-4 py-3.5 text-sm border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70 transition-colors ${
+            subIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
+          }`}
         >
-          <option value="">Select...</option>
-          {FIRE_SYSTEMS.fireAlarm.map((item) => (
-            <option key={item.name} value={item.name}>
-              {item.name}
-            </option>
-          ))}
-          <option value="Other">Other</option>
-        </select>
-        {ext.fireAlarmSystem === 'Other' && (
-          <input
-            type="text"
-            placeholder="Specify Other"
-            value={ext.customFireAlarm || ''}
-            onChange={(e) => handleExtinguisherChange(index, 'customFireAlarm', e.target.value)}
-            className="input-field py-2 mt-2 text-sm"
-          />
-        )}
-      </div>
-
-      {/* Pump Type */}
-      <div>
-        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-          Pump Type
-        </label>
-        <select
-          value={ext.pumpType || ''}
-          onChange={(e) => handleExtinguisherChange(index, 'pumpType', e.target.value)}
-          className="input-field py-2 text-sm"
-        >
-          <option value="">Select...</option>
-          {FIRE_SYSTEMS.pumps.map((item) => (
-            <option key={item.name} value={item.name}>
-              {item.name}
-            </option>
-          ))}
-          <option value="Other">Other</option>
-        </select>
-        {ext.pumpType === 'Other' && (
-          <input
-            type="text"
-            placeholder="Specify Other"
-            value={ext.customPump || ''}
-            onChange={(e) => handleExtinguisherChange(index, 'customPump', e.target.value)}
-            className="input-field py-2 mt-2 text-sm"
-          />
-        )}
-      </div>
+          <div className="font-medium text-slate-800">
+            {subUnit.firefightingSystem || <span className="text-slate-400">N/A</span>}
+          </div>
+          <div className="text-slate-700">
+            {subUnit.material || <span className="text-slate-400">N/A</span>}
+          </div>
+          <div className="text-slate-600">
+            {subUnit.unit || 'Pieces'}
+          </div>
+          <div className="font-medium text-slate-800">
+            {subUnit.quantity || 1}
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                setExtinguishers(prev =>
+                  prev.map((item, i) =>
+                    i === index
+                      ? { ...item, newUnits: item.newUnits.filter((_, si) => si !== subIndex) }
+                      : item
+                  )
+                );
+              }}
+              className="p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-300"
+              title="Remove this sub-unit"
+            >
+              <Trash size={16} />
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
+  </div>
+)}
+        </div>
 
     <div className="col-span-4 space-y-6">
 
