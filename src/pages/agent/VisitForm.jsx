@@ -25,11 +25,14 @@ const VisitForm = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewCustomer, setIsNewCustomer] = useState(false);
+  const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [recordingIndex, setRecordingIndex] = useState(null);
   const [unitVoiceWarnings, setUnitVoiceWarnings] = useState({});
   const debounceTimers = useRef([]);
+  const searchDebounceRef = useRef(null);
 
 
   const FIRE_SYSTEMS = {
@@ -231,21 +234,37 @@ const VisitForm = () => {
   }, [extinguishers]);
 
   // Handlers
-  const handleSearch = async (query) => {
+  const handleSearch = (query) => {
     setSearchQuery(query);
-    if (query.length > 2) {
-      try {
-        const { data, error } = await supabase
-          .from('customers')
-          .select('id, business_name, owner_name, email, phone, address, business_type')
-          .or(`business_name.ilike.%${query}%,phone.ilike.%${query}%`)
-          .limit(10);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
-        if (error) throw error;
-        setSearchResults(data);
-      } catch (err) { console.error(err); }
+    if (query.trim().length > 0) {
+      setIsSearching(true);
+      searchDebounceRef.current = setTimeout(async () => {
+        try {
+          // Search by name, phone, or ID (if numeric)
+          let searchFilter = `business_name.ilike.%${query}%,phone.ilike.%${query}%`;
+          if (/^\d+$/.test(query)) {
+            searchFilter += `,id.eq.${query}`;
+          }
+
+          const { data, error } = await supabase
+            .from('customers')
+            .select('id, business_name, owner_name, email, phone, address, business_type')
+            .or(searchFilter)
+            .limit(10);
+
+          if (error) throw error;
+          setSearchResults(data);
+        } catch (err) {
+          console.error('Search error:', err);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 500);
     } else {
       setSearchResults([]);
+      setIsSearching(false);
     }
   };
 
@@ -295,17 +314,56 @@ const VisitForm = () => {
     setFormData({
       ...formData,
       customerId: cust.id,
-      businessName: cust.business_name,
+      businessName: cust.business_name || '',
       ownerName: cust.owner_name || '',
       phone: cust.phone || '',
-      email: cust.email,
+      email: cust.email || '',
       address: cust.address || '',
-      businessType: cust.business_type || 'Retail'
+      businessType: cust.business_type || 'Retail Store - Grocery'
     });
     setSearchResults([]);
+    setSearchQuery(''); // Clear search query immediately
     setIsNewCustomer(false);
+    setIsEditingCustomer(false); // Reset edit mode on selection
   };
 
+
+
+  const handleUpdateCustomer = async () => {
+    if (!formData.customerId) return;
+    setLoading(true);
+    try {
+      console.log("Updating customer record in database...", formData.customerId);
+
+      let finalBusinessType = formData.businessType;
+      if (formData.businessType === 'Other' && formData.customBusinessType.trim()) {
+        finalBusinessType = formData.customBusinessType.trim();
+      }
+
+      const { error } = await supabase
+        .from('customers')
+        .update({
+          business_name: formData.businessName,
+          owner_name: formData.ownerName || null,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          address: formData.address || null,
+          business_type: finalBusinessType,
+        })
+        .eq('id', formData.customerId);
+
+      if (error) throw error;
+
+      console.log("SUCCESS: Customer record successfully updated in database.");
+      setIsEditingCustomer(false);
+      alert("Customer details updated successfully!");
+    } catch (err) {
+      console.error("Update failed:", err);
+      alert("Failed to update customer: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const handleInputChange = (e) => {
@@ -677,27 +735,15 @@ const VisitForm = () => {
           finalBusinessType = 'Other';   // agar blank chhoda to sirf "Other" save ho
         }
       }
-      // 1. Handle New Lead Customer
+      // 1. Handle New Lead Customer or Editing Existing
       if (!finalCustId) {
         let imageUrl = null;
 
-        // Pehle photo upload try karo (agar file select ki hai)
         if (formData.customerPhoto) {
           imageUrl = await uploadCustomerPhoto(formData.customerPhoto);
         }
 
-        let finalBusinessType = formData.businessType;
-
-        if (formData.businessType === 'Other') {
-          if (formData.customBusinessType.trim()) {
-            finalBusinessType = formData.customBusinessType.trim();
-          } else {
-            finalBusinessType = 'Other';
-          }
-        }
-
-        const hashedPassword = bcrypt.hashSync(formData.password, 8);
-
+        const hashedPassword = bcrypt.hashSync(formData.password || '123456', 8);
 
         const { data: leadData, error: leadError } = await supabase
           .from('customers')
@@ -710,7 +756,7 @@ const VisitForm = () => {
             address: formData.address || null,
             business_type: finalBusinessType,
             status: 'Lead',
-            image_url: imageUrl,           // ← yahan URL save ho jayega
+            image_url: imageUrl,
           }])
           .select();
 
@@ -719,7 +765,6 @@ const VisitForm = () => {
         finalCustId = leadData[0].id;
         console.log("New Lead Created with ID:", finalCustId);
 
-        // QR Logic (same as before)
         try {
           const qrContent = JSON.stringify({ id: finalCustId, type: 'customer', name: formData.businessName });
           finalQrUrl = await QRCode.toDataURL(qrContent);
@@ -728,6 +773,7 @@ const VisitForm = () => {
           console.error('QR generation/update failed:', qrErr);
         }
       }
+      // Note: Existing customer updates are now handled immediately in Step 1 by handleUpdateCustomer
 
       // SAFEGUARD: Ensure we have a valid Customer ID before proceeding
       if (!finalCustId) {
@@ -905,29 +951,54 @@ const VisitForm = () => {
             <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><UserPlus size={24} /></div>
             <div>
               <h3 className="text-xl font-bold text-slate-900">Customer Identification</h3>
-              <p className="text-sm text-slate-500">Search for an existing customer or register a new lead.</p>
+              <p className="text-sm text-slate-500">
+                {isNewCustomer ? 'Registering a new lead.' : 'Search for an existing customer or toggle to new lead.'}
+              </p>
             </div>
           </div>
 
+          <div className="mb-6 flex gap-4">
+            <button
+              onClick={() => { setIsNewCustomer(false); setFormData({ ...formData, customerId: null }); }}
+              className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all border-2 ${!isNewCustomer ? 'bg-primary-50 border-primary-500 text-primary-700' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+            >
+              Find Existing Customer
+            </button>
+            <button
+              onClick={() => { setIsNewCustomer(true); setFormData({ ...formData, customerId: null }); setSearchQuery(''); }}
+              className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all border-2 ${isNewCustomer ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+            >
+              Create New Lead
+            </button>
+          </div>
+
           {!isNewCustomer && !formData.customerId && (
-            <div className="mb-8 relative">
+            <div className="mb-8 relative animate-fade-in">
               <label className="block text-sm font-medium text-slate-700 mb-2">Search Customer Database</label>
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${isSearching ? 'text-primary-500 animate-pulse' : 'text-slate-400'}`} size={20} />
                 <input
                   type="text"
                   className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all shadow-sm"
-                  placeholder="Search by Business Name or Phone..."
+                  placeholder="Search by ID, Business Name or Phone..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                 />
+                {isSearching && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin h-5 w-5 border-2 border-primary-500 border-t-transparent rounded-full" />
+                  </div>
+                )}
               </div>
               {searchResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 bg-white mt-2 rounded-xl shadow-xl border border-slate-100 z-10 max-h-60 overflow-y-auto">
                   {searchResults.map(cust => (
                     <div key={cust.id} onClick={() => selectCustomer(cust)} className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex justify-between items-center group">
                       <div>
-                        <p className="font-bold text-slate-900">{cust.business_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-slate-900">{cust.business_name}</p>
+                          <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">ID: {cust.id}</span>
+                        </div>
                         <p className="text-sm text-slate-500">{cust.address}</p>
                       </div>
                       <ArrowRight size={18} className="text-slate-300 group-hover:text-primary-500 transition-colors" />
@@ -935,78 +1006,121 @@ const VisitForm = () => {
                   ))}
                 </div>
               )}
-
-              <div className="mt-6 text-center">
-                <span className="text-slate-500">Customer not found? </span>
-                <button onClick={() => { setIsNewCustomer(true); setFormData({ ...formData, customerId: null }); }} className="font-bold text-primary-600 hover:underline">
-                  Create New Lead
-                </button>
-              </div>
+              {searchQuery.trim().length > 0 && !isSearching && searchResults.length === 0 && (
+                <div className="absolute top-full left-0 right-0 bg-white mt-2 p-4 rounded-xl shadow-lg border border-slate-100 z-10 text-center text-slate-500 text-sm">
+                  No matches found for "{searchQuery}"
+                </div>
+              )}
             </div>
           )}
 
           {(isNewCustomer || formData.customerId) && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-fade-in">
               <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</span>
-                  <p className={`font-bold ${isNewCustomer ? 'text-green-600' : 'text-blue-600'}`}>
-                    {isNewCustomer ? 'Creating New Lead' : 'Existing Customer Selected'}
-                  </p>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</span>
+                  <div className="flex items-center gap-2">
+                    <p className={`font-bold ${isNewCustomer ? 'text-green-600' : 'text-blue-600'}`}>
+                      {isNewCustomer ? 'Creating New Lead' : 'Existing Customer Selected'}
+                    </p>
+                    {!isNewCustomer && (
+                      <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono font-bold">#{formData.customerId}</span>
+                    )}
+                  </div>
                 </div>
-                {!isNewCustomer && (
-                  <button onClick={() => { setFormData({ ...formData, customerId: null }); setSearchQuery(''); }} className="text-sm font-medium text-red-500 hover:text-red-700">
-                    Change
-                  </button>
-                )}
-                {isNewCustomer && (
-                  <button onClick={() => { setIsNewCustomer(false); }} className="text-sm font-medium text-slate-500 hover:text-slate-700">
-                    Cancel
-                  </button>
-                )}
+
+                <div className="flex items-center gap-3">
+                  {!isNewCustomer && (
+                    <button
+                      onClick={() => {
+                        if (isEditingCustomer) {
+                          handleUpdateCustomer();
+                        } else {
+                          setIsEditingCustomer(true);
+                        }
+                      }}
+                      disabled={loading}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isEditingCustomer ? 'bg-green-600 text-white shadow-md' : 'bg-white text-primary-600 border border-primary-200 hover:bg-primary-50'}`}
+                    >
+                      {loading && isEditingCustomer ? (
+                        <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
+                      ) : (
+                        isEditingCustomer ? <><Check size={14} /> Save Edit</> : <><Pencil size={14} /> Edit Customer</>
+                      )}
+                    </button>
+                  )}
+                  {!isNewCustomer && (
+                    <button
+                      onClick={() => {
+                        if (isEditingCustomer) {
+                          setIsEditingCustomer(false);
+                          // Reset to search if needed, but here we just cancel edit
+                        } else {
+                          setFormData({ ...formData, customerId: null });
+                          setSearchQuery('');
+                        }
+                      }}
+                      className="text-xs font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      {isEditingCustomer ? 'Cancel' : 'Clear'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Business Name" name="businessName" value={formData.businessName} onChange={handleInputChange} required={isNewCustomer} />
-                <Input label="Owner Name" name="ownerName" value={formData.ownerName} onChange={handleInputChange} />
-                <Input label="Phone Contact" name="phone" type='number' value={formData.phone} onChange={handleInputChange} required={isNewCustomer} />
-                <Input label="Email Address" name="email" type='email' value={formData.email} onChange={handleInputChange} />
-                <div className="relative w-full">
-                  <Input label="Password" name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleInputChange} required={isNewCustomer} placeholder="Customer login password" />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-[38px] text-gray-500"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-                <div className="md:col-span-1 relative">
+                <Input label="Business Name" name="businessName" value={formData.businessName} onChange={handleInputChange} required={isNewCustomer} disabled={!isNewCustomer && !isEditingCustomer} />
+                <Input label="Owner Name" name="ownerName" value={formData.ownerName} onChange={handleInputChange} disabled={!isNewCustomer && !isEditingCustomer} />
+                <Input label="Phone Contact" name="phone" type='number' value={formData.phone} onChange={handleInputChange} required={isNewCustomer} disabled={!isNewCustomer && !isEditingCustomer} />
+                <Input label="Email Address" name="email" type='email' value={formData.email} onChange={handleInputChange} disabled={!isNewCustomer && !isEditingCustomer} />
+
+                {isNewCustomer && (
+                  <div className="relative w-full">
+                    <Input label="Password" name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleInputChange} required={isNewCustomer} placeholder="Customer login password" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-[38px] text-gray-500"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                )}
+
+                <div className={`md:col-span-${isNewCustomer ? '1' : '2'} relative`}>
                   <Input
                     label="Site Address"
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
                     placeholder={isFetchingLocation ? "Fetching location..." : "Enter site address or use button"}
-                    disabled={isFetchingLocation}
+                    disabled={isFetchingLocation || (!isNewCustomer && !isEditingCustomer)}
                   />
-                  <button
-                    onClick={fetchLocation}
-                    disabled={isFetchingLocation}
-                    className={`absolute right-2 top-8 p-2 rounded-lg transition-colors ${isFetchingLocation ? 'text-gray-400 cursor-wait' : 'text-primary-600 hover:bg-primary-50'}`}
-                    title="Get Current Location"
-                  >
-                    {isFetchingLocation ? (
-                      <div className="animate-spin h-5 w-5 border-2 border-primary-500 border-t-transparent rounded-full" />
-                    ) : (
-                      <MapPin size={20} />
-                    )}
-                  </button>
+                  {(isNewCustomer || isEditingCustomer) && (
+                    <button
+                      onClick={fetchLocation}
+                      disabled={isFetchingLocation}
+                      className={`absolute right-2 top-8 p-2 rounded-lg transition-all ${isFetchingLocation ? 'text-gray-400 cursor-wait' : 'text-primary-600 hover:bg-primary-50 active:scale-95'}`}
+                      title="Get Current Location"
+                    >
+                      {isFetchingLocation ? (
+                        <div className="animate-spin h-5 w-5 border-2 border-primary-500 border-t-transparent rounded-full" />
+                      ) : (
+                        <MapPin size={20} />
+                      )}
+                    </button>
+                  )}
                 </div>
                 <div className="md:col-span-2 space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Business Category</label>
-                    <select name="businessType" value={formData.businessType} onChange={handleInputChange} className="input-field">
+                    <select
+                      name="businessType"
+                      value={formData.businessType}
+                      onChange={handleInputChange}
+                      className="input-field"
+                      disabled={!isNewCustomer && !isEditingCustomer}
+                    >
                       <optgroup label="Retail Store">
                         <option>Retail Store - Grocery</option>
                         <option>Retail Store - Clothing</option>
@@ -1019,7 +1133,7 @@ const VisitForm = () => {
                       <option>Industrial Factory</option>
                       <option>Warehouse</option>
                       <option>Educational Institute</option>
-                      <option>Other</option>   {/* ← yeh add kar diya */}
+                      <option>Other</option>
                     </select>
                   </div>
 
@@ -1035,7 +1149,8 @@ const VisitForm = () => {
                         onChange={handleInputChange}
                         placeholder="e.g. Beauty Salon, Car Wash, Gym, etc."
                         className="input-field"
-                        required   // agar chaaho to required rakh sakte ho
+                        required
+                        disabled={!isNewCustomer && !isEditingCustomer}
                       />
                     </div>
                   )}
@@ -1107,8 +1222,8 @@ const VisitForm = () => {
                       }}
                       disabled={!ext.hasChanges}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm transition-all min-w-[70px] justify-center ${ext.hasChanges
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                       title="Save changes and lock this unit"
                     >
@@ -1147,7 +1262,7 @@ const VisitForm = () => {
                       onClick={() => !ext.isLocked && handleExtinguisherChange(index, 'mode', m)} // NEW: Disable if locked
                       disabled={ext.isLocked && ext.mode !== m} // NEW: Disable others if locked
                       className={`w-full py-2 rounded-lg text-xs font-bold transition-all ${ext.mode === m ? 'bg-primary-500 text-white shadow-md' :
-                          (ext.isLocked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50')
+                        (ext.isLocked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50')
                         }`}
                     >
                       {m}
@@ -1301,8 +1416,8 @@ const VisitForm = () => {
                             ext.isLocked
                           }
                           className={`w-full text-xs max-w-[100px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${(!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
-                              ? 'bg-gray-400 cursor-not-allowed text-white'
-                              : 'bg-primary-600 hover:bg-primary-700 text-white'
+                            ? 'bg-gray-400 cursor-not-allowed text-white'
+                            : 'bg-primary-600 hover:bg-primary-700 text-white'
                             }`}
                         >
                           <Plus size={18} /> Add This Item
@@ -1570,8 +1685,8 @@ const VisitForm = () => {
                             onClick={() => addNewUnit(index)}
                             disabled={!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1 || ext.isLocked}
                             className={`w-full text-xs max-w-[100px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${(!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
-                                ? 'bg-gray-400 cursor-not-allowed text-white'
-                                : 'bg-primary-600 hover:bg-primary-700 text-white'
+                              ? 'bg-gray-400 cursor-not-allowed text-white'
+                              : 'bg-primary-600 hover:bg-primary-700 text-white'
                               }`}
                           >
                             <Plus size={18} /> Add
@@ -1690,8 +1805,8 @@ const VisitForm = () => {
                                 onTouchStart={() => startUnitRecording(index)}
                                 onTouchEnd={stopUnitRecording}
                                 className={`w-14 h-14 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${recordingIndex === index && isRecording
-                                    ? 'bg-red-500 animate-pulse text-white scale-110 shadow-lg shadow-red-500/30'
-                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                  ? 'bg-red-500 animate-pulse text-white scale-110 shadow-lg shadow-red-500/30'
+                                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                                   }`}
                               >
                                 {recordingIndex === index && isRecording ? <Square size={20} /> : <Mic size={20} />}
@@ -1920,10 +2035,19 @@ const VisitForm = () => {
   );
 };
 
-const Input = ({ label, name, value, onChange, placeholder, required = false, type = "text" }) => (
+const Input = ({ label, name, value, onChange, placeholder, required = false, type = "text", disabled = false }) => (
   <div>
     <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-    <input name={name} value={value} onChange={onChange} required={required} placeholder={placeholder} type={type} className="input-field" />
+    <input
+      name={name}
+      value={value}
+      onChange={onChange}
+      required={required}
+      placeholder={placeholder}
+      type={type}
+      disabled={disabled}
+      className={`input-field transition-all ${disabled ? 'bg-slate-50 text-slate-500 cursor-not-allowed border-slate-100' : 'bg-white'}`}
+    />
   </div>
 );
 
