@@ -13,6 +13,11 @@ import {
 import bcrypt from 'bcryptjs';
 import { useRef } from 'react';
 
+const getDefaultUnit = (material) => {
+  if (['Pipes', 'Hose Reels', 'Hydrants'].includes(material)) return 'Meter';
+  return 'Pieces';
+};
+
 const VisitForm = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -88,7 +93,7 @@ const VisitForm = () => {
   };
 
   const FIRE_FIGHTING_CATEGORIES = {
-    "Fire Protection System": [
+    "Fire Fighting System": [
       "Sprinklers",
       "Pipes",
       "Gate Valves",
@@ -160,7 +165,8 @@ const VisitForm = () => {
       maintenanceUnitPhoto: null,
       isLocked: false,
       hasChanges: false,
-      newUnits: []  // ← Yeh add karo (empty array for sub-units)
+      newUnits: [],
+      customMaterial: ''
     }
   ]);
 
@@ -200,9 +206,20 @@ const VisitForm = () => {
           return item;
         }
 
+        // Check for 'Other' validation
+        if (item.firefightingSystem === 'Other' && (!item.customFirefightingSystem || !item.customFirefightingSystem.trim())) {
+          alert("Please specify the System name.");
+          return item;
+        }
+
+        if (item.material === 'Other' && (!item.customMaterial || !item.customMaterial.trim())) {
+          alert("Please specify the Material name.");
+          return item;
+        }
+
         const newSubUnit = {
-          firefightingSystem: item.firefightingSystem,
-          material: item.material,
+          firefightingSystem: item.firefightingSystem === 'Other' ? item.customFirefightingSystem : item.firefightingSystem,
+          material: item.material === 'Other' ? item.customMaterial : item.material,
           unit: item.unit || 'Pieces',
           quantity: item.quantity || 1
         };
@@ -224,9 +241,12 @@ const VisitForm = () => {
         if (debounceTimers.current[index]) clearTimeout(debounceTimers.current[index]);
         debounceTimers.current[index] = setTimeout(() => {
           setExtinguishers(prev =>
-            prev.map((item, i) => i === index ? { ...item, isLocked: true, hasChanges: false } : item)
+            prev.map((item, i) =>
+              (i === index && item.mode === 'Validation' && item.hasChanges)
+                ? { ...item, isLocked: true, hasChanges: false }
+                : item
+            )
           );
-          // Optional: Alert or console "Auto-saved and locked unit {index+1}"
         }, 2000); // 2 seconds debounce
       }
     });
@@ -381,12 +401,22 @@ const VisitForm = () => {
     setExtinguishers(prev =>
       prev.map((item, i) => {
         if (i !== index) return item;
+
+        // Mode change should ALWAYS be allowed and should unlock/reset validation
+        if (field === 'mode') {
+          return { ...item, mode: value, isLocked: false, hasChanges: false, price: 180 };
+        }
+
+        // Other fields blocked if locked
         if (item.isLocked) return item;
+
         const updated = { ...item, [field]: value, hasChanges: true };
 
 
         if (field === 'type' && value !== 'Other') updated.customType = '';
         if (field === 'partner' && value !== 'Other') updated.customPartner = '';
+        if (field === 'material' && value !== 'Other') updated.customMaterial = '';
+        if (field === 'firefightingSystem' && value !== 'Other') updated.customFirefightingSystem = '';
 
         if (field === 'mode') {
           updated.price = 180; // default base
@@ -430,7 +460,9 @@ const VisitForm = () => {
       maintenanceUnitPhoto: null,
       isLocked: false,
       hasChanges: false,
-      newUnits: []
+      newUnits: [],
+      customMaterial: '',
+      customFirefightingSystem: ''
     }]);
   };
 
@@ -848,24 +880,25 @@ const VisitForm = () => {
                   const subRow = {
                     customer_id: finalCustId,
                     visit_id: visitId,
-                    type: null,                     // ← Maintenance mein type null
-                    capacity: null,                 // ← Maintenance mein capacity null
+                    type: sub.material || null,      // ← Store Material in type
+                    capacity: item.capacity || null,
                     quantity: sub.quantity || 1,
-                    expiry_date: null,
-                    condition: null,
-                    status: item.mode === 'New Unit' ? 'New' : 'Maintained',  // ← YEH CHANGE! Maintenance ke liye 'Maintained'
-                    brand: null,
-                    seller: null,
+                    expiry_date: item.expiryDate || null,
+                    condition: item.condition || 'Good',
+                    status: item.mode === 'New Unit' ? 'New' : 'Maintained',
+                    brand: item.brand || null,
+                    seller: item.seller || null,
                     partner: item.partner || null,
                     price: subPrice,
                     firefighting_system: sub.firefightingSystem || null,
-                    fire_alarm_system: null,
-                    pump_type: null,
+                    fire_alarm_system: item.fireAlarmSystem || null,
+                    pump_type: item.pumpType || null,
                     maintenance_notes: item.maintenanceNotes || null,
-                    maintenance_voice_url: voiceUrl,          // sab sub-units pe same voice (ya sirf pehle pe daal sakta hai)
-                    maintenance_unit_photo_url: photoUrl,     // same
+                    maintenance_voice_url: voiceUrl,
+                    maintenance_unit_photo_url: photoUrl,
                     is_sub_unit: true,
-                    unit: sub.unit || 'Pieces'
+                    unit: sub.unit || 'Pieces',
+                    query_status: 'Active'
                   };
                   rows.push(subRow);
                 });
@@ -895,7 +928,8 @@ const VisitForm = () => {
                 maintenance_voice_url: voiceUrl,
                 maintenance_unit_photo_url: photoUrl,
                 is_sub_unit: false,
-                unit: item.unit || null
+                unit: item.unit || null,
+                query_status: 'Active'
               };
               rows.push(mainRow);
             }
@@ -1259,10 +1293,9 @@ const VisitForm = () => {
                   {['Validation', 'Refill', 'New Unit', 'Maintenance'].map((m) => (
                     <button
                       key={m}
-                      onClick={() => !ext.isLocked && handleExtinguisherChange(index, 'mode', m)} // NEW: Disable if locked
-                      disabled={ext.isLocked && ext.mode !== m} // NEW: Disable others if locked
+                      onClick={() => handleExtinguisherChange(index, 'mode', m)}
                       className={`w-full py-2 rounded-lg text-xs font-bold transition-all ${ext.mode === m ? 'bg-primary-500 text-white shadow-md' :
-                        (ext.isLocked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50')
+                        'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
                         }`}
                     >
                       {m}
@@ -1333,54 +1366,95 @@ const VisitForm = () => {
                     <div className="col-span-4 space-y-6 animate-fade-in">
 
                       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                        {/* Fire Fighting System */}
+                        {/* Fire Fighting System Category */}
                         <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-                            Fire Fighting System
+                          <label
+                            htmlFor={`ff-system-${index}`}
+                            className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                          >
+                            System Category
                           </label>
                           <select
+                            id={`ff-system-${index}`}
                             value={ext.firefightingSystem || ''}
                             onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
-                            disabled={ext.isLocked}
-                            className="input-field py-2 text-sm"
+                            className="input-field py-2 text-sm bg-white cursor-pointer"
                           >
                             <option value="">Select...</option>
                             {Object.keys(FIRE_FIGHTING_CATEGORIES).map(sys => (
                               <option key={sys} value={sys}>{sys}</option>
                             ))}
+                            <option>Other</option>
                           </select>
+                          {ext.firefightingSystem === 'Other' && (
+                            <div className="mt-3 animate-fade-in">
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                                Specify System
+                              </label>
+                              <input
+                                type="text"
+                                value={ext.customFirefightingSystem || ''}
+                                onChange={(e) => handleExtinguisherChange(index, 'customFirefightingSystem', e.target.value)}
+                                placeholder="e.g. Clean Agent System, etc."
+                                className="input-field py-2 text-sm"
+                                required
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Material */}
                         <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                          <label
+                            htmlFor={`material-${index}`}
+                            className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                          >
                             Material
                           </label>
                           <select
+                            id={`material-${index}`}
                             value={ext.material || ''}
                             onChange={(e) => {
                               const mat = e.target.value;
                               handleExtinguisherChange(index, 'material', mat);
-                              // Auto-set unit
                               handleExtinguisherChange(index, 'unit', getDefaultUnit(mat));
                             }}
-                            disabled={ext.isLocked || !ext.firefightingSystem}
-                            className="input-field py-2 text-sm"
+                            className={`input-field py-2 text-sm ${!ext.firefightingSystem ? 'bg-slate-50 cursor-not-allowed opacity-60' : 'bg-white cursor-pointer'}`}
                           >
                             <option value="">Select Material</option>
                             {ext.firefightingSystem &&
                               FIRE_FIGHTING_CATEGORIES[ext.firefightingSystem]?.map(mat => (
                                 <option key={mat} value={mat}>{mat}</option>
                               ))}
+                            <option>Other</option>
                           </select>
+                          {ext.material === 'Other' && (
+                            <div className="mt-3 animate-fade-in">
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                                Specify Material
+                              </label>
+                              <input
+                                type="text"
+                                value={ext.customMaterial || ''}
+                                onChange={(e) => handleExtinguisherChange(index, 'customMaterial', e.target.value)}
+                                placeholder="e.g. Fire Blanket, Fire Curtain, etc."
+                                className="input-field py-2 text-sm"
+                                required
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Unit (Meter / Pieces) */}
                         <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                          <label
+                            htmlFor={`unit-${index}`}
+                            className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                          >
                             Unit
                           </label>
                           <select
+                            id={`unit-${index}`}
                             value={ext.unit || 'Pieces'}
                             onChange={(e) => handleExtinguisherChange(index, 'unit', e.target.value)}
                             disabled={ext.isLocked}
@@ -1393,10 +1467,14 @@ const VisitForm = () => {
 
                         {/* Quantity */}
                         <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                          <label
+                            htmlFor={`qty-${index}`}
+                            className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                          >
                             Quantity
                           </label>
                           <input
+                            id={`qty-${index}`}
                             type="number"
                             min="1"
                             value={ext.quantity || 1}
@@ -1612,51 +1690,101 @@ const VisitForm = () => {
                     <>
                       <div className="col-span-4 space-y-6 animate-fade-in">
                         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                          {/* Fire Fighting System */}
+                          {/* Fire Fighting System Category */}
                           <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-                              Fire Fighting System
+                            <label
+                              htmlFor={`ff-system-maint-${index}`}
+                              className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                            >
+                              System Category
                             </label>
                             <select
+                              id={`ff-system-maint-${index}`}
                               value={ext.firefightingSystem || ''}
                               onChange={(e) => handleExtinguisherChange(index, 'firefightingSystem', e.target.value)}
-                              disabled={ext.isLocked}
-                              className="input-field py-2 text-sm"
+                              className="input-field py-2 text-sm bg-white cursor-pointer"
                             >
-                              <option value="">Select...</option>
+                              <option value="">Select Category...</option>
                               {Object.keys(FIRE_FIGHTING_CATEGORIES).map(sys => (
                                 <option key={sys} value={sys}>{sys}</option>
                               ))}
+                              <option>Other</option>
                             </select>
+                            {ext.firefightingSystem === 'Other' && (
+                              <div className="mt-3 animate-fade-in">
+                                <label
+                                  htmlFor={`custom-system-maint-${index}`}
+                                  className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                                >
+                                  Specify System
+                                </label>
+                                <input
+                                  id={`custom-system-maint-${index}`}
+                                  type="text"
+                                  value={ext.customFirefightingSystem || ''}
+                                  onChange={(e) => handleExtinguisherChange(index, 'customFirefightingSystem', e.target.value)}
+                                  placeholder="e.g. Clean Agent System, etc."
+                                  className="input-field py-2 text-sm"
+                                  required
+                                />
+                              </div>
+                            )}
                           </div>
                           {/* Material */}
                           <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                            <label
+                              htmlFor={`material-maint-${index}`}
+                              className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                            >
                               Material
                             </label>
                             <select
+                              id={`material-maint-${index}`}
                               value={ext.material || ''}
                               onChange={(e) => {
                                 const mat = e.target.value;
                                 handleExtinguisherChange(index, 'material', mat);
                                 handleExtinguisherChange(index, 'unit', getDefaultUnit(mat));
                               }}
-                              disabled={ext.isLocked || !ext.firefightingSystem}
-                              className="input-field py-2 text-sm"
+                              className={`input-field py-2 text-sm ${!ext.firefightingSystem ? 'bg-slate-50 cursor-not-allowed opacity-60' : 'bg-white cursor-pointer'}`}
                             >
-                              <option value="">Select Material</option>
+                              <option value="">Select Material...</option>
                               {ext.firefightingSystem &&
                                 FIRE_FIGHTING_CATEGORIES[ext.firefightingSystem]?.map(mat => (
                                   <option key={mat} value={mat}>{mat}</option>
                                 ))}
+                              <option>Other</option>
                             </select>
+                            {ext.material === 'Other' && (
+                              <div className="mt-3 animate-fade-in">
+                                <label
+                                  htmlFor={`custom-material-maint-${index}`}
+                                  className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                                >
+                                  Specify Material
+                                </label>
+                                <input
+                                  id={`custom-material-maint-${index}`}
+                                  type="text"
+                                  value={ext.customMaterial || ''}
+                                  onChange={(e) => handleExtinguisherChange(index, 'customMaterial', e.target.value)}
+                                  placeholder="e.g. Fire Blanket, Fire Curtain, etc."
+                                  className="input-field py-2 text-sm"
+                                  required
+                                />
+                              </div>
+                            )}
                           </div>
                           {/* Unit */}
                           <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                            <label
+                              htmlFor={`unit-maint-${index}`}
+                              className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                            >
                               Unit
                             </label>
                             <select
+                              id={`unit-maint-${index}`}
                               value={ext.unit || 'Pieces'}
                               onChange={(e) => handleExtinguisherChange(index, 'unit', e.target.value)}
                               disabled={ext.isLocked}
@@ -1668,10 +1796,14 @@ const VisitForm = () => {
                           </div>
                           {/* Quantity */}
                           <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                            <label
+                              htmlFor={`qty-maint-${index}`}
+                              className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block"
+                            >
                               Quantity
                             </label>
                             <input
+                              id={`qty-maint-${index}`}
                               type="number"
                               min="1"
                               value={ext.quantity || 1}
