@@ -13,11 +13,15 @@ import {
   Box,
   Activity,
   DollarSign,
+  ArrowRight,
+  Eye
 } from 'lucide-react';
 import PageLoader from '../../components/PageLoader';
+import { useNavigate } from 'react-router-dom';
 
 const CustomerDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [queries, setQueries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,6 +113,11 @@ const CustomerDetails = () => {
                 label="Created At"
                 value={formatDate(customer.created_at)}
               />
+              <Info
+                icon={<Activity />}
+                label="Last Updated"
+                value={formatDate(customer.last_updated)}
+              />
             </Grid>
           </Section>
 
@@ -123,85 +132,53 @@ const CustomerDetails = () => {
           {/* Customer Queries / Extinguishers */}
           <Section title={`Customer Equipment & Queries (${queries.length})`}>
             {queries.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {queries.map((query) => (
-                  <div
-                    key={query.id}
-                    className="group relative bg-white p-5 rounded-xl border border-slate-200 hover:border-primary-300 hover:shadow-md transition-all duration-200"
-                  >
-                    {/* Header */}
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-slate-50 text-primary-600 rounded-lg group-hover:bg-primary-50 transition-colors">
-                          <FireExtinguisher size={20} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-slate-900 leading-tight">
-                            {query.type || 'Unknown Type'}
-                          </h3>
-                          <p className="text-xs text-slate-400 mt-1 font-mono">
-                            ID: #{query.id}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <QueryStatusBadge status={query.status} />
-                        <ActiveStatusBadge status={query.query_status} />
-                      </div>
-                    </div>
-
-                    {/* Details Grid */}
-                    <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-4">
-                      {query.capacity && (
-                        <div className="flex items-center gap-2">
-                          <Scale className="w-4 h-4 text-slate-400" />
-                          <div>
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Capacity</p>
-                            <p className="text-sm font-semibold text-slate-700">{query.capacity}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        <Box className="w-4 h-4 text-slate-400" />
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Quantity</p>
-                          <p className="text-sm font-semibold text-slate-700">{query.quantity || 1}</p>
-                        </div>
-                      </div>
-
-                      {query.condition && (
-                        <div className="flex items-center gap-2">
-                          <Activity className="w-4 h-4 text-slate-400" />
-                          <div>
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Condition</p>
-                            <p className="text-sm font-semibold text-slate-700">{query.condition}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {query.price && (
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-slate-400" />
-                          <div>
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Price</p>
-                            <p className="text-sm font-bold text-green-700">SAR {query.price}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer / Dates */}
-                    {query.expiry_date && (
-                      <div className="pt-3 mt-1 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="text-slate-500">Expires:</span>
-                        <span className={`font-medium ${new Date(query.expiry_date) < new Date() ? 'text-red-500' : 'text-slate-700'}`}>
-                          {formatDate(query.expiry_date)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
+                <table className="min-w-full text-sm divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr className="text-slate-600 uppercase text-[10px] tracking-wider font-bold">
+                      <th className="px-4 py-4 text-left">S.No</th>
+                      <th className="px-4 py-4 text-left">Type</th>
+                      <th className="px-4 py-4 text-left">Status</th>
+                      <th className="px-4 py-4 text-left">Condition</th>
+                      <th className="px-4 py-4 text-left">Price</th>
+                      <th className="px-4 py-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {queries.map((query, index) => (
+                      <tr
+                        key={query.id}
+                        onClick={() => navigate(`/agent/query/${query.id}`)}
+                        className="group hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        <td className="px-4 py-3 font-mono text-xs text-slate-400">#{query.id}</td>
+                        {/* <td className="px-4 py-3 font-mono text-xs text-slate-500">{index + 1}</td> */}
+                        <td className="px-4 py-3 font-medium text-slate-900">{query.type || 'Unknown'}</td>
+                        <td className="px-4 py-3">
+                          <QueryStatusBadge status={query.status} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <ActiveStatusBadge status={query.query_status} />
+                        </td>
+                        <td className="px-4 py-3 font-bold text-green-700">
+                          {query.price ? `SAR ${query.price}` : 'N/A'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/agent/query/${query.id}`);
+                            }}
+                            className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                            title="View Details"
+                          >
+                            <Eye size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
