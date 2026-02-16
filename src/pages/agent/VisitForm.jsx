@@ -1599,42 +1599,53 @@ const VisitForm = () => {
                         </div>
                       )}
 
-                      {/* ─── Price (you'll likely want to change this logic later) ─── */}
-                      <div className="col-span-4 mt-6 pt-4 border-t border-slate-200 grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Base Price</label>
-                          <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-                            SAR 180
+                      {/* ─── Price / Note Logic ─── */}
+                      <div className="col-span-4 mt-6 pt-4 border-t border-slate-200">
+                        {ext.firefightingSystem === 'Other' || ext.material === 'Other' ? (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
+                            <AlertTriangle className="text-amber-600 mt-0.5" size={20} />
+                            <p className="text-sm text-amber-800 font-medium">
+                              Price confirmation is currently not available for this material. Our team will confirm the price separately.
+                            </p>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-fade-in">
+                            <div>
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Base Price</label>
+                              <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
+                                SAR 180
+                              </div>
+                            </div>
 
-                        <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Fighting MTP</label>
-                          <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-                            SAR {ext.firefightingSystem !== 'Other' ? FIRE_SYSTEMS.firefighting.find(it => it.name === ext.firefightingSystem)?.price || 0 : 0}
-                          </div>
-                        </div>
+                            <div>
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Fighting MTP</label>
+                              <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
+                                SAR {FIRE_SYSTEMS.firefighting.find(it => it.name === ext.firefightingSystem)?.price || 0}
+                              </div>
+                            </div>
 
-                        <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Alarm MTP</label>
-                          <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-                            SAR {ext.fireAlarmSystem !== 'Other' ? FIRE_SYSTEMS.fireAlarm.find(it => it.name === ext.fireAlarmSystem)?.price || 0 : 0}
-                          </div>
-                        </div>
+                            <div>
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Alarm MTP</label>
+                              <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
+                                SAR {FIRE_SYSTEMS.fireAlarm.find(it => it.name === ext.fireAlarmSystem)?.price || 0}
+                              </div>
+                            </div>
 
-                        <div>
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Pump MTP</label>
-                          <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
-                            SAR {ext.pumpType !== 'Other' ? FIRE_SYSTEMS.pumps.find(it => it.name === ext.pumpType)?.price || 0 : 0}
-                          </div>
-                        </div>
+                            <div>
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Pump MTP</label>
+                              <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
+                                SAR {FIRE_SYSTEMS.pumps.find(it => it.name === ext.pumpType)?.price || 0}
+                              </div>
+                            </div>
 
-                        <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
-                          <label className="text-xs font-bold text-green-800 uppercase tracking-wider mb-1 block">Final Price (SAR)</label>
-                          <div className="text-xl font-bold text-green-700">
-                            SAR {ext.price}
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center transition-all">
+                              <label className="text-xs font-bold text-green-800 uppercase tracking-wider mb-1 block">Final Price (SAR)</label>
+                              <div className="text-xl font-bold text-green-700">
+                                SAR {ext.price}
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -2047,6 +2058,55 @@ const VisitForm = () => {
                               </>
                             )}
                           </div>
+                        </div>
+
+                        {/* ─── Price / Note Logic for Maintenance ─── */}
+                        <div className="col-span-4 mt-6 pt-4 border-t border-slate-200">
+                          {ext.firefightingSystem === 'Other' || ext.material === 'Other' ? (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
+                              <AlertTriangle className="text-amber-600 mt-0.5" size={20} />
+                              <p className="text-sm text-amber-800 font-medium">
+                                Price confirmation is currently not available for this material. Our team will confirm the price separately.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-fade-in">
+                              <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Base Price</label>
+                                <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
+                                  SAR 180
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Fighting MTP</label>
+                                <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
+                                  SAR {FIRE_SYSTEMS.firefighting.find(it => it.name === ext.firefightingSystem)?.price || 0}
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fire Alarm MTP</label>
+                                <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
+                                  SAR {FIRE_SYSTEMS.fireAlarm.find(it => it.name === ext.fireAlarmSystem)?.price || 0}
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Pump MTP</label>
+                                <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
+                                  SAR {FIRE_SYSTEMS.pumps.find(it => it.name === ext.pumpType)?.price || 0}
+                                </div>
+                              </div>
+
+                              <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center transition-all">
+                                <label className="text-xs font-bold text-green-800 uppercase tracking-wider mb-1 block">Final Price (SAR)</label>
+                                <div className="text-xl font-bold text-green-700">
+                                  SAR {ext.price}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </>
