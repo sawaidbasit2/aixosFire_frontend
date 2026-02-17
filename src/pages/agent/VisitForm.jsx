@@ -370,6 +370,7 @@ const VisitForm = () => {
           phone: formData.phone || null,
           address: formData.address || null,
           business_type: finalBusinessType,
+          last_updated: new Date().toISOString(),
         })
         .eq('id', formData.customerId);
 
@@ -801,7 +802,10 @@ const VisitForm = () => {
         try {
           const qrContent = JSON.stringify({ id: finalCustId, type: 'customer', name: formData.businessName });
           finalQrUrl = await QRCode.toDataURL(qrContent);
-          await supabase.from('customers').update({ qr_code_url: finalQrUrl }).eq('id', finalCustId);
+          await supabase.from('customers').update({
+            qr_code_url: finalQrUrl,
+            last_updated: new Date().toISOString()
+          }).eq('id', finalCustId);
         } catch (qrErr) {
           console.error('QR generation/update failed:', qrErr);
         }
