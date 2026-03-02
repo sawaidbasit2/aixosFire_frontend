@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield, Bookmark, FireExtinguisher, Clock } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useLocationTracker from '../hooks/useLocationTracker';
+import NotificationBell from './NotificationBell';
+import ChatModal from './Chat/ChatModal';
 
 const SidebarItem = ({ icon: Icon, label, to, active }) => (
     <Link to={to} className={`flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${active ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
@@ -15,9 +17,16 @@ const Layout = ({ children }) => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const [isChatOpen, setIsChatOpen] = React.useState(false);
+    const [selectedQueryId, setSelectedQueryId] = React.useState(null);
 
     // Active Location Tracking
     useLocationTracker();
+
+    const handleOpenChat = (queryId) => {
+        setSelectedQueryId(queryId);
+        setIsChatOpen(true);
+    };
 
     // Define navigation items based on role
     const getNavItems = () => {
@@ -44,6 +53,10 @@ const Layout = ({ children }) => {
                 { icon: ShoppingBag, label: 'Total Customers', to: '/admin/customers' },
                 { icon: Bookmark, label: 'Service Queue', to: '/admin/services' },
                 { icon: Map, label: 'Global Map', to: '/admin/map' },
+            ];
+        } else if (role === 'partner') {
+            return [
+                { icon: LayoutDashboard, label: 'Partner Dashboard', to: '/partner/dashboard' },
             ];
         }
         return [];
@@ -106,14 +119,23 @@ const Layout = ({ children }) => {
             <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 relative">
                 <div className="absolute top-0 left-0 w-full h-64 bg-slate-100 z-0"></div>
 
-                <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 md:hidden p-4 flex justify-between items-center z-20 sticky top-0">
-                    <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-primary-500 rounded">
+                <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 p-4 md:px-8 flex justify-between items-center z-30 sticky top-0">
+                    <div className="flex items-center gap-2 md:hidden">
+                        <div className="p-1.5 bg-primary-500 rounded-lg">
                             <Shield size={18} className="text-white" />
                         </div>
                         <h1 className="text-lg font-bold text-slate-900">AiXOS Red</h1>
                     </div>
-                    <button onClick={handleLogout} className="text-slate-500"><LogOut size={20} /></button>
+                    <div className="hidden md:block">
+                        <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{location.pathname.split('/').pop().replace('-', ' ')}</h2>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <NotificationBell onOpenChat={handleOpenChat} />
+                        <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                            <LogOut size={20} />
+                        </button>
+                    </div>
                 </header>
 
                 <main className="flex-1 overflow-auto p-4 md:p-8 z-10">
@@ -122,6 +144,12 @@ const Layout = ({ children }) => {
                     </div>
                 </main>
             </div>
+
+            <ChatModal
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                queryId={selectedQueryId}
+            />
         </div>
     );
 };
