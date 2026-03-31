@@ -33,6 +33,15 @@ const ALL_COLUMNS = [
 
 const DEFAULT_VISIBLE_COLUMNS = ["seq", "created_at", "type", "capacity", "price", "status", "condition", "actions"];
 
+const toCanonicalInquiryType = (raw) => {
+  const v = decodeURIComponent((raw || "").toString()).trim().toLowerCase();
+  if (["validation"].includes(v)) return "Validation";
+  if (["refill", "refilled"].includes(v)) return "Refill";
+  if (["maintenance"].includes(v)) return "Maintenance";
+  if (["new unit", "new-unit", "newunit"].includes(v)) return "New Unit";
+  return decodeURIComponent(raw || "");
+};
+
 const CategoryDetails = () => {
   const { category } = useParams();
   const { user } = useAuth();
@@ -42,8 +51,7 @@ const CategoryDetails = () => {
   const [visibleColumns, setVisibleColumns] = useState(DEFAULT_VISIBLE_COLUMNS);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
-  const formattedCategory =
-    category.charAt(0).toUpperCase() + category.slice(1);
+  const formattedCategory = toCanonicalInquiryType(category);
 
   useEffect(() => {
     if (!user) return;
@@ -51,63 +59,83 @@ const CategoryDetails = () => {
     const fetchData = async () => {
       setLoading(true);
 
-      const { data: fetchedData, error } = await supabase
-        .from("extinguishers")
-        .select(`
-          id,
-          type,
-          capacity,
-          quantity,
-          price,
-          install_date,
-          last_refill_date,
-          expiry_date,
-          condition,
-          status,
-          brand,
-          seller,
-          partner,
-          query_status,
-          firefighting_system,
-          fire_alarm_system,
-          pump_type,
-          maintenance_notes,
-          maintenance_voice_url,
-          maintenance_unit_photo_url,
-          is_sub_unit,
-          unit,
-          created_at,
-          certificate_photo,
-          extinguisher_photo,
-          visits (
-            visit_date,
-            agent_id
-          )
-        `)
-        .eq("status", formattedCategory)
-        .eq("visits.agent_id", user.id);
+      const { data: inquiries, error: inquiriesError } = await supabase
+        .from("inquiries")
+        .select("id,inquiry_no,type,status,created_at,agent_id")
+        .eq("agent_id", user.id)
+        .eq("type", formattedCategory);
 
-      if (!error) setData(fetchedData);
+      if (inquiriesError) {
+        setLoading(false);
+        return;
+      }
+
+      const inquiryIds = (inquiries || []).map((q) => q.id);
+      const { data: items, error } =
+        inquiryIds.length > 0
+          ? await supabase
+              .from("inquiry_items")
+              .select(`
+                id,
+                inquiry_id,
+                serial_no,
+                type,
+                capacity,
+                quantity,
+                unit,
+                price,
+                install_date,
+                last_refill_date,
+                expiry_date,
+                condition,
+                status,
+                brand,
+                seller,
+                partner,
+                query_status,
+                firefighting_system,
+                fire_alarm_system,
+                pump_type,
+                maintenance_notes,
+                maintenance_voice_url,
+                maintenance_unit_photo_url,
+                is_sub_unit,
+                created_at,
+                certificate_photo,
+                extinguisher_photo
+              `)
+              .in("inquiry_id", inquiryIds)
+          : { data: [], error: null };
+
+      if (!error) {
+        const inquiryMap = new Map((inquiries || []).map((q) => [q.id, q]));
+        const enriched = (items || []).map((it) => ({
+          ...it,
+          inquiry_no: inquiryMap.get(it.inquiry_id)?.inquiry_no,
+          inquiry_status: inquiryMap.get(it.inquiry_id)?.status || "pending"
+        }));
+        setData(enriched);
+      }
       setLoading(false);
     };
 
     fetchData();
   }, [formattedCategory, user]);
 
-  const handleCloseQuery = async (id) => {
+  const handleCloseQuery = async (inquiryId) => {
     if (!window.confirm("Are you sure you want to close this query?")) return;
 
     try {
       const { error } = await supabase
-        .from("extinguishers")
-        .update({ query_status: "Closed" })
-        .eq("id", id);
+        .from("inquiries")
+        .update({ status: "closed" })
+        .eq("id", inquiryId);
 
       if (error) throw error;
 
       // Update local state
       setData(prev => prev.map(item =>
-        item.id === id ? { ...item, query_status: "Closed" } : item
+        item.inquiry_id === inquiryId ? { ...item, inquiry_status: "closed" } : item
       ));
 
       alert("Query closed successfully!");
@@ -271,7 +299,7 @@ const CategoryDetails = () => {
                     }`}
                 >
                   {visibleColumns.includes('seq') && (
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">#{item.id}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">#{item.inquiry_no || item.id}</td>
                   )}
                   {visibleColumns.includes('created_at') && (
                     <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatDate(item.created_at)}</td>
@@ -358,12 +386,12 @@ const CategoryDetails = () => {
                   )}
                   {visibleColumns.includes('actions') && (
                     <td className="px-4 py-3 text-center">
-                      {item.query_status === 'Active' ? (
+                      {(item.inquiry_status || '').toLowerCase() !== 'closed' ? (
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/agent/query/${item.id}`);
+                              navigate(`/agent/query/${item.inquiry_id}`);
                             }}
                             className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                             title="View Details"
@@ -373,7 +401,7 @@ const CategoryDetails = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleCloseQuery(item.id);
+                              handleCloseQuery(item.inquiry_id);
                             }}
                             className="px-3 py-1.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold text-[10px] uppercase tracking-wider whitespace-nowrap"
                           >

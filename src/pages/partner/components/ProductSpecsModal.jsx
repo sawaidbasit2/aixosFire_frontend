@@ -64,19 +64,19 @@ const ProductSpecsModal = ({ isOpen, onClose, product }) => {
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Safety Certification</p>
                             <div className="flex items-center gap-2">
                                 <Shield size={16} className="text-emerald-500" />
-                                <p className="font-bold text-slate-900">{product.specs.safetyCertification}</p>
+                                <p className="font-bold text-slate-900">{product.specs?.safetyCertification || '--'}</p>
                             </div>
                         </div>
 
                         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cylinder Material</p>
-                            <p className="font-bold text-slate-900">{product.specs.cylinderMaterial}</p>
+                            <p className="font-bold text-slate-900">{product.specs?.cylinderMaterial || '--'}</p>
                         </div>
 
                         <div className="p-6 bg-primary-50 rounded-3xl border border-primary-100/50">
                             <p className="text-[10px] font-black text-primary-500 uppercase tracking-widest mb-2">Description</p>
                             <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                                {product.specs.description}
+                                {product.specs?.description || 'No additional product description provided.'}
                             </p>
                         </div>
                     </div>

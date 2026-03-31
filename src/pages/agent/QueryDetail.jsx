@@ -31,52 +31,43 @@ const QueryDetail = () => {
         const fetchQueryDetail = async () => {
             setLoading(true);
             try {
-                // Fetch query details with visit and agent info
-                // Assuming 'visits' table has 'agent_id' and we join with 'users' or 'profiles'
-                // For now, we fetch extinguisher and visits. Agent name usually comes from user metadata or a profiles table.
-                // We'll try to fetch agent details if possible.
-                // Phase 1: Fetch the specific extinguisher to get its inquiry_no
-                const { data: initialData, error: initialError } = await supabase
-                    .from('extinguishers')
-                    .select('inquiry_no')
-                    .eq('id', id)
-                    .single();
-
-                if (initialError) throw initialError;
-
-                // Phase 2: Fetch all units and items sharing that inquiry_no
-                const { data, error } = await supabase
-                    .from('extinguishers')
+                const { data: inquiryData, error: inquiryError } = await supabase
+                    .from('inquiries')
                     .select(`
                         *,
                         visits (
                             visit_date,
                             agent_id
-                        ),
-                        inquiry_items (*)
+                        )
                     `)
-                    .eq('inquiry_no', initialData.inquiry_no);
+                    .eq('id', id)
+                    .single();
 
-                if (error) throw error;
-                
-                // Fetch all items from inquiry_items linked via extinguisher_id
-                // Sorting by serial_no ensures consistent display
-                const allItems = data[0]?.inquiry_items || [];
+                if (inquiryError) throw inquiryError;
+
+                const { data: itemsData, error: itemsError } = await supabase
+                    .from('inquiry_items')
+                    .select('*')
+                    .eq('inquiry_id', id);
+
+                if (itemsError) throw itemsError;
+
+                const allItems = itemsData || [];
                 const sortedItems = [...allItems].sort((a,b) => (a.serial_no || 0) - (b.serial_no || 0));
 
                 const primaryQuery = {
-                    ...data[0],
+                    ...inquiryData,
                     inquiry_items: sortedItems
                 };
 
                 setQuery(primaryQuery);
 
                 // Fetch Customer Details
-                if (data[0].customer_id) {
+                if (inquiryData.customer_id) {
                     const { data: customerData, error: customerError } = await supabase
                         .from('customers')
                         .select('*')
-                        .eq('id', data[0].customer_id)
+                        .eq('id', inquiryData.customer_id)
                         .single();
 
                     if (!customerError) {
@@ -86,15 +77,16 @@ const QueryDetail = () => {
 
                 // Fetch Agent details (Assuming a 'profiles' or 'users' table exists)
                 // If agent_id is available, we'll try to get their details
-                if (data && data.visits && data.visits.agent_id) {
+                if (inquiryData?.agent_id) {
                     const { data: agentData, error: agentError } = await supabase
-                        .from('agents') // Adjust based on actual table name
+                        .from('agents')
                         .select('name, email')
-                        .eq('id', data.visits.agent_id)
+                        .eq('id', inquiryData.agent_id)
                         .single();
 
                     if (!agentError) {
-                        data.agent = agentData;
+                        primaryQuery.agent = agentData;
+                        setQuery({ ...primaryQuery });
                     }
                 }
 
@@ -110,6 +102,7 @@ const QueryDetail = () => {
 
     const formatDate = (date) =>
         date ? new Date(date).toLocaleDateString() : 'N/A';
+    const primaryItem = query?.inquiry_items?.[0] || null;
 
     if (loading) return <PageLoader message="Loading query details..." />;
     if (!query) return (
@@ -140,13 +133,13 @@ const QueryDetail = () => {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${query.status === 'Valid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${(query.status || '').toLowerCase() === 'completed' || (query.status || '').toLowerCase() === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                         }`}>
                         {query.status || 'Pending'}
                     </span>
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${query.query_status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${(primaryItem?.query_status || 'Active') === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
                         }`}>
-                        {query.query_status || 'Active'}
+                        {primaryItem?.query_status || 'Active'}
                     </span>
                 </div>
             </div>
@@ -210,34 +203,34 @@ const QueryDetail = () => {
                             <h2 className="font-bold text-slate-900">Maintenance Details</h2>
                         </div>
                         <div className="grid grid-cols-2 gap-6">
-                            <DetailItem label="Fire Fighting System" value={query.firefighting_system} />
-                            <DetailItem label="Fire Alarm System" value={query.fire_alarm_system} />
-                            <DetailItem label="Pump Type" value={query.pump_type} />
-                            <DetailItem label="Install Date" value={formatDate(query.install_date)} />
-                            <DetailItem label="Last Refill" value={formatDate(query.last_refill_date)} />
-                            <DetailItem label="Expiry Date" value={formatDate(query.expiry_date)} />
+                            <DetailItem label="Fire Fighting System" value={primaryItem?.firefighting_system} />
+                            <DetailItem label="Fire Alarm System" value={primaryItem?.fire_alarm_system} />
+                            <DetailItem label="Pump Type" value={primaryItem?.pump_type} />
+                            <DetailItem label="Install Date" value={formatDate(primaryItem?.install_date)} />
+                            <DetailItem label="Last Refill" value={formatDate(primaryItem?.last_refill_date)} />
+                            <DetailItem label="Expiry Date" value={formatDate(primaryItem?.expiry_date)} />
                         </div>
-                        {query.maintenance_notes && (
+                        {primaryItem?.maintenance_notes && (
                             <div className="p-4 bg-slate-50 rounded-xl border-l-4 border-slate-300">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Notes</p>
-                                <p className="text-sm text-slate-600 leading-relaxed">{query.maintenance_notes}</p>
+                                <p className="text-sm text-slate-600 leading-relaxed">{primaryItem.maintenance_notes}</p>
                             </div>
                         )}
                     </section>
 
                     {/* Media Section */}
-                    {(query.extinguisher_photo || query.maintenance_unit_photo_url || query.maintenance_voice_url) && (
+                    {(primaryItem?.extinguisher_photo || primaryItem?.maintenance_unit_photo_url || primaryItem?.maintenance_voice_url) && (
                         <section className="bg-white rounded-2xl border p-6 space-y-6">
                             <h2 className="font-bold text-slate-900">Attached Media</h2>
                             <div className="grid grid-cols-2 gap-4">
-                                {query.extinguisher_photo && (
-                                    <MediaItem title="Equipment Photo" url={query.extinguisher_photo} type="image" />
+                                {primaryItem?.extinguisher_photo && (
+                                    <MediaItem title="Equipment Photo" url={primaryItem.extinguisher_photo} type="image" />
                                 )}
-                                {query.maintenance_unit_photo_url && (
-                                    <MediaItem title="Maintenance Photo" url={query.maintenance_unit_photo_url} type="image" />
+                                {primaryItem?.maintenance_unit_photo_url && (
+                                    <MediaItem title="Maintenance Photo" url={primaryItem.maintenance_unit_photo_url} type="image" />
                                 )}
-                                {query.maintenance_voice_url && (
-                                    <MediaItem title="Voice Note" url={query.maintenance_voice_url} type="audio" />
+                                {primaryItem?.maintenance_voice_url && (
+                                    <MediaItem title="Voice Note" url={primaryItem.maintenance_voice_url} type="audio" />
                                 )}
                             </div>
                         </section>

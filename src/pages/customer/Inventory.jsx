@@ -5,6 +5,14 @@ import { Search, Filter, QrCode, AlertTriangle, CheckCircle, FireExtinguisher, C
 import { Link } from 'react-router-dom';
 import PageLoader from '../../components/PageLoader';
 
+const hasValidDate = (value) => {
+    if (!value) return false;
+    const t = new Date(value).getTime();
+    return Number.isFinite(t) && t > 0;
+};
+
+const formatDateSafe = (value) => (hasValidDate(value) ? new Date(value).toLocaleDateString() : '—');
+
 const Inventory = () => {
     const { user } = useAuth();
     const [inventory, setInventory] = useState([]);
@@ -16,8 +24,9 @@ const Inventory = () => {
         const fetchInventory = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('extinguishers')
+                    .from('inquiry_items')
                     .select('*')
+                    .order('updated_at', { ascending: false })
                     .eq('customer_id', user.id);
 
                 if (error) throw error;
@@ -37,7 +46,7 @@ const Inventory = () => {
 
         if (filterStatus === 'all') return matchesSearch;
 
-        const isExpired = new Date(item.expiry_date) < new Date();
+        const isExpired = hasValidDate(item.expiry_date) && new Date(item.expiry_date) < new Date();
         if (filterStatus === 'expired') return matchesSearch && isExpired;
         if (filterStatus === 'valid') return matchesSearch && !isExpired;
 
@@ -45,6 +54,9 @@ const Inventory = () => {
     });
 
     const getStatusBadge = (expiryDate) => {
+        if (!hasValidDate(expiryDate)) {
+            return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">No Expiry</span>;
+        }
         const isExpired = new Date(expiryDate) < new Date();
         const isNear = new Date(expiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
@@ -112,7 +124,7 @@ const Inventory = () => {
                             <tbody className="divide-y divide-slate-50">
                                 {filteredInventory.map((item) => (
                                     <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="px-6 py-4 font-mono text-sm text-slate-600">#{item.id}</td>
+                                        <td className="px-6 py-4 font-mono text-sm text-slate-600">#{item.extinguisher_id ?? item.id}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
@@ -120,15 +132,15 @@ const Inventory = () => {
                                                 </div>
                                                 <div>
                                                     <div className="font-bold text-slate-900">{item.type}</div>
-                                                    <div className="text-xs text-slate-500">{item.capacity}</div>
+                                                    <div className="text-xs text-slate-500">{item.capacity || '—'}</div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-slate-600">
-                                            {new Date(item.install_date).toLocaleDateString()}
+                                            {formatDateSafe(item.install_date)}
                                         </td>
                                         <td className="px-6 py-4 text-sm font-medium">
-                                            {new Date(item.expiry_date).toLocaleDateString()}
+                                            {formatDateSafe(item.expiry_date)}
                                         </td>
                                         <td className="px-6 py-4">
                                             {getStatusBadge(item.expiry_date)}

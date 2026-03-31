@@ -34,6 +34,8 @@ import CategoryDetails from './pages/perfomance/CategoryDetails';
 // Partner Pages
 import PartnerDashboard from './pages/partner/Dashboard';
 import InquiryItemsList from './pages/partner/InquiryItemsList';
+import InquiryItemDetailPage from './pages/partner/InquiryItemDetailPage';
+import SiteAssessmentFormPage from './pages/partner/SiteAssessmentFormPage';
 
 
 
@@ -116,6 +118,8 @@ function App() {
               <ProtectedRoute allowedRoles={['partner']}>
                 <Routes>
                   <Route path="dashboard" element={<PartnerDashboard />} />
+                  <Route path="inquiry/:id/item/:itemId/site-assessment" element={<SiteAssessmentFormPage />} />
+                  <Route path="inquiry/:id/item/:itemId" element={<InquiryItemDetailPage />} />
                   <Route path="inquiry/:id" element={<InquiryItemsList />} />
                 </Routes>
               </ProtectedRoute>

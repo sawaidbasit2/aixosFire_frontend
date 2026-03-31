@@ -198,12 +198,19 @@ const AgentDashboard = () => {
     const fetchQueries = async () => {
       try {
         setLoadingQueries(true);
-        // Fetch extinguishers linked to visits by this agent
-        // We filter by query_status: 'Active' (based on VisitForm.jsx logic)
+        // Query source is now `inquiries` (one row per query).
         const { data, error } = await supabase
-          .from('extinguishers')
+          .from('inquiries')
           .select(`
-            *,
+            id,
+            inquiry_no,
+            type,
+            status,
+            priority,
+            created_at,
+            updated_at,
+            visit_id,
+            customer_id,
             visits!inner (
               id,
               visit_date,
@@ -211,7 +218,7 @@ const AgentDashboard = () => {
               agent_id
             )
           `)
-          .eq('visits.agent_id', user.id)
+          .eq('agent_id', user.id)
           .order('created_at', { ascending: false })
 
         if (error) throw error;
@@ -439,14 +446,16 @@ const AgentDashboard = () => {
                 queries.map((query, index) => (
                   <tr key={query.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="font-bold text-slate-900">{query.id.toString().slice(-6).toUpperCase()}</div>
+                      <div className="font-bold text-slate-900">{query.inquiry_no || query.id.toString().slice(-6).toUpperCase()}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${query.status === 'Valid' ? 'bg-green-100 text-green-700' :
-                        query.status === 'Refilled' ? 'bg-blue-100 text-blue-700' :
-                          'bg-orange-100 text-orange-700'
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${(query.status || '').toLowerCase() === 'completed' || (query.status || '').toLowerCase() === 'accepted'
+                        ? 'bg-green-100 text-green-700'
+                        : (query.status || '').toLowerCase() === 'rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-orange-100 text-orange-700'
                         }`}>
-                        {query.query_status || 'Pending'}
+                        {query.status || 'Pending'}
                       </span>
                     </td>
                     <td className="px-6 py-4">

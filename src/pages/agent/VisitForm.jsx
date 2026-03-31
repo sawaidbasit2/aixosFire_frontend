@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import PageLoader from '../../components/PageLoader';
 import QRCode from 'qrcode';
+import { createInquiry } from '../../api/partners';
 import {
   Plus, Trash, Save, ArrowLeft, Building, FireExtinguisher, FileText,
   Search, Check, AlertTriangle, ArrowRight, UserPlus, MapPin, Camera, Image, Mic, Square,
@@ -878,28 +879,7 @@ const VisitForm = () => {
 
       // 5. Build Unified Data
       if (extinguishers.length > 0) {
-        // A. Insert ONE Parent Extinguisher Record for the entire visit
-        const parentPayload = {
-          customer_id: finalCustId,
-          visit_id: visitId,
-          inquiry_no: inquiryNo,
-          inquiry_type: inquiryType,
-          query_status: 'Active',
-          // Store first block's basic info for quick-view searching
-          type: extinguishers[0].material || extinguishers[0].type || null,
-          capacity: extinguishers[0].capacity || null,
-          status: extinguishers[0].mode === 'New Unit' ? 'New' : (extinguishers[0].mode === 'Refill' ? 'Refilled' : (extinguishers[0].mode === 'Validation' ? 'Valid' : 'Maintained'))
-        };
-
-        const { data: parentData, error: parentError } = await supabase
-          .from('extinguishers')
-          .insert([parentPayload])
-          .select();
-
-        if (parentError) throw parentError;
-        const parentId = parentData[0].id;
-
-        // B. Collect ALL items from all blocks
+        // Collect ALL items from all blocks
         let globalSerialNo = 1;
         const allItemsPayload = [];
 
@@ -918,11 +898,9 @@ const VisitForm = () => {
             }
           }
 
-          // 1. Map the Main Unit of this block (EXCEPT for 'New Unit' mode which uses sub-units)
+          // 1. Map the Main Unit of this block
           if (item.mode !== 'New Unit' && (item.material || item.firefightingSystem || item.type)) {
             allItemsPayload.push({
-              extinguisher_id: parentId,
-              customer_id: finalCustId,
               serial_no: globalSerialNo++,
               type: item.type || null,
               system_type: item.material || null,
@@ -940,7 +918,6 @@ const VisitForm = () => {
               maintenance_voice_url: voiceUrl,
               maintenance_unit_photo_url: photoUrl,
               is_sub_unit: false,
-              query_status: 'Active'
             });
           }
 
@@ -952,11 +929,9 @@ const VisitForm = () => {
               if (ffItem) subPrice += ffItem.price;
 
               allItemsPayload.push({
-                extinguisher_id: parentId,
-                customer_id: finalCustId,
                 serial_no: globalSerialNo++,
-                type: item.type || null,         // Block's extinguisher type
-                system_type: sub.material || null, // Sub-unit's specific system/material
+                type: item.type || null,
+                system_type: sub.material || null,
                 capacity: item.capacity || null,
                 quantity: sub.quantity || 1,
                 price: subPrice,
@@ -971,19 +946,24 @@ const VisitForm = () => {
                 maintenance_voice_url: voiceUrl,
                 maintenance_unit_photo_url: photoUrl,
                 is_sub_unit: true,
-                query_status: 'Active'
               });
             });
           }
         }
 
-        // C. Batch Insert all units into inquiry_items
-        if (allItemsPayload.length > 0) {
-          const { error: itemsError } = await supabase
-            .from('inquiry_items')
-            .insert(allItemsPayload);
+        // C. Call Backend API to create the full inquiry in one shot
+        const inquiryData = {
+          inquiry_no: inquiryNo,
+          customer_id: finalCustId,
+          partner_id: uniquePartners[0], // Only one partner is allowed per visit
+          agent_id: user.id,
+          visit_id: visitId,
+          type: inquiryType,
+          priority: 'Medium'
+        };
 
-          if (itemsError) throw itemsError;
+        if (allItemsPayload.length > 0) {
+          await createInquiry(inquiryData, allItemsPayload);
         }
       }
       navigate('/agent/dashboard');

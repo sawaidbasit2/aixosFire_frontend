@@ -18,22 +18,23 @@ import { Link } from 'react-router-dom';
 import PageLoader from "../../components/PageLoader";
 
 /* ---------- Reusable Card ---------- */
-const StatCard = ({ icon: Icon, title, value, color }) => (
-  <div className="bg-white rounded-3xl p-6 shadow-soft border border-slate-100">
-    <div className={`p-3 rounded-2xl ${color} bg-opacity-10 w-fit mb-4`}>
-      <Icon size={22} className={color.replace("bg-", "text-")} />
+const StatCard = ({ icon, title, value, color }) => {
+  const IconComponent = icon;
+  return (
+    <div className="bg-white rounded-3xl p-6 shadow-soft border border-slate-100">
+      <div className={`p-3 rounded-2xl ${color} bg-opacity-10 w-fit mb-4`}>
+        <IconComponent size={22} className={color.replace("bg-", "text-")} />
+      </div>
+      <p className="text-sm text-slate-500">{title}</p>
+      <h3 className="text-3xl font-bold text-slate-900">{value}</h3>
     </div>
-    <p className="text-sm text-slate-500">{title}</p>
-    <h3 className="text-3xl font-bold text-slate-900">{value}</h3>
-  </div>
-);
+  );
+};
 
 const AgentPerformance = () => {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
-  const [categoryCountRange, setCategoryCountRange] = useState("Monthly");
-  const [categoryValueRange, setCategoryValueRange] = useState("Monthly");
 
   const [categoryCount, setCategoryCount] = useState([]);
   const [categoryValue, setCategoryValue] = useState([]);
@@ -62,43 +63,57 @@ const AgentPerformance = () => {
       try {
         const fromDate = getDateByRange().toISOString();
 
-        const { data, error } = await supabase
-          .from("extinguishers")
-          .select(
-            `
-            status,
-            price,
-            quantity,
-            visits (
-              visit_date,
-              agent_id
-            )
-          `,
-          )
-          .eq("visits.agent_id", user.id)
-          .gte("visits.visit_date", fromDate);
+        // Query header source = inquiries, item/value source = inquiry_items.
+        const { data: inquiries, error } = await supabase
+          .from("inquiries")
+          .select("id,type,status,created_at")
+          .eq("agent_id", user.id)
+          .gte("created_at", fromDate);
 
         if (error) throw error;
+        const inquiryList = inquiries || [];
+        const inquiryIds = inquiryList.map((i) => i.id);
+
+        const { data: itemsData, error: itemsError } =
+          inquiryIds.length > 0
+            ? await supabase
+                .from("inquiry_items")
+                .select("inquiry_id,price,quantity")
+                .in("inquiry_id", inquiryIds)
+            : { data: [], error: null };
+
+        if (itemsError) throw itemsError;
+
+        const itemsByInquiry = {};
+        (itemsData || []).forEach((it) => {
+          if (!itemsByInquiry[it.inquiry_id]) {
+            itemsByInquiry[it.inquiry_id] = { quantity: 0, value: 0 };
+          }
+          const qty = toNumber(it.quantity, 1);
+          const price = toNumber(it.price, 0);
+          itemsByInquiry[it.inquiry_id].quantity += qty;
+          itemsByInquiry[it.inquiry_id].value += price * qty;
+        });
 
         /* ---------- SUMMARY ---------- */
         const todayStr = new Date().toISOString().split("T")[0];
 
         const categorySummary = {};
 
-        data.forEach((d) => {
-          categorySummary[d.status] = (categorySummary[d.status] || 0) + 1;
+        inquiryList.forEach((d) => {
+          const category = d.type || "Unknown";
+          categorySummary[category] = (categorySummary[category] || 0) + 1;
         });
 
-        const totalValue = data.reduce(
-          (sum, d) => sum + toNumber(d.price) * toNumber(d.quantity, 1),
-          0,
-        );
+        const totalValue = inquiryList.reduce((sum, d) => {
+          return sum + (itemsByInquiry[d.id]?.value || 0);
+        }, 0);
 
         setSummary({
-          today: data.filter(
-            (d) => d.visits?.visit_date?.split("T")[0] === todayStr,
+          today: inquiryList.filter(
+            (d) => d.created_at?.split("T")[0] === todayStr,
           ).length,
-          total: data.length,
+          total: inquiryList.length,
           totalValue,
           byCategory: categorySummary,
         });
@@ -107,11 +122,10 @@ const AgentPerformance = () => {
         const countMap = {};
         const valueMap = {};
 
-        data.forEach((d) => {
-          countMap[d.status] = (countMap[d.status] || 0) + 1;
-          valueMap[d.status] =
-            (valueMap[d.status] || 0) +
-            toNumber(d.price) * toNumber(d.quantity, 1);
+        inquiryList.forEach((d) => {
+          const category = d.type || "Unknown";
+          countMap[category] = (countMap[category] || 0) + 1;
+          valueMap[category] = (valueMap[category] || 0) + (itemsByInquiry[d.id]?.value || 0);
         });
 
         setCategoryCount(
@@ -125,10 +139,11 @@ const AgentPerformance = () => {
         /* ---------- TABLE DATA ---------- */
         const tableMap = {};
 
-        data.forEach((d) => {
-          if (!tableMap[d.status]) {
-            tableMap[d.status] = {
-              category: d.status,
+        inquiryList.forEach((d) => {
+          const category = d.type || "Unknown";
+          if (!tableMap[category]) {
+            tableMap[category] = {
+              category,
               total: 0,
               active: 0,
               closed: 0,
@@ -137,17 +152,17 @@ const AgentPerformance = () => {
             };
           }
 
-          tableMap[d.status].total += 1;
-          tableMap[d.status].quantity += toNumber(d.quantity, 1);
-          tableMap[d.status].value +=
-            toNumber(d.price) * toNumber(d.quantity, 1);
+          const status = (d.status || "").toString().toLowerCase();
+          tableMap[category].total += 1;
+          tableMap[category].quantity += itemsByInquiry[d.id]?.quantity || 0;
+          tableMap[category].value += itemsByInquiry[d.id]?.value || 0;
 
-          if (["Validation", "New"].includes(d.status)) {
-            tableMap[d.status].active += 1;
+          if (["pending", "active", "in progress", "quoted", "new"].includes(status)) {
+            tableMap[category].active += 1;
           }
 
-          if (["Refilled", "Maintenance"].includes(d.status)) {
-            tableMap[d.status].closed += 1;
+          if (["accepted", "approved", "completed", "closed", "rejected"].includes(status)) {
+            tableMap[category].closed += 1;
           }
         });
 
@@ -293,7 +308,7 @@ const AgentPerformance = () => {
               {tableData.map((row, index) => (
                 <Link
                   key={row.category}
-                  to={`/agent/performance/${row.category.toLowerCase()}`}
+                  to={`/agent/performance/${encodeURIComponent(row.category)}`}
                   className="contents"
                 >
                   <tr

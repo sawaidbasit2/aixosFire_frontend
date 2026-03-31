@@ -28,18 +28,6 @@ const ClientChatBox = ({ initialMessages = [] }) => {
         setMessages([...messages, msg]);
         setNewMessage('');
 
-        // Simulate client reply after a short delay
-        if (messages.length < 5) { // Limit auto-replies for demo
-            setTimeout(() => {
-                const reply = {
-                    id: Date.now() + 1,
-                    sender: 'Client',
-                    text: 'Received, thank you for the update.',
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-                setMessages(prev => [...prev, reply]);
-            }, 2000);
-        }
     };
 
     return (

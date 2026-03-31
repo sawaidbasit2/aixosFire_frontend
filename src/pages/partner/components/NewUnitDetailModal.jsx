@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Package, DollarSign, Calculator, ChevronDown, CheckCircle, MessageCircle, Info, AlertCircle, Search, Maximize2, Tag } from 'lucide-react';
-import MockChatModal from './MockChatModal';
+import { X, Package, ChevronDown, CheckCircle, AlertCircle, Search, Maximize2, Tag, Loader2 } from 'lucide-react';
 import ProductSpecsModal from './ProductSpecsModal';
-import { productCatalog } from '../../../data/partnerDummyData';
+import { updateInquiryItem } from '../../../api/partners';
+import { toast } from 'react-hot-toast';
 
-const NewUnitDetailModal = ({ isOpen, onClose, inquiry }) => {
+const NewUnitDetailModal = ({ isOpen, onClose, inquiry, onUpdate }) => {
     const [selectedProductName, setSelectedProductName] = useState('');
     const [selectedCatalogNo, setSelectedCatalogNo] = useState('');
     const [productInfo, setProductInfo] = useState(null);
@@ -13,61 +13,103 @@ const NewUnitDetailModal = ({ isOpen, onClose, inquiry }) => {
     const [remarks, setRemarks] = useState('');
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
-    const [isChatOpen, setIsChatOpen] = useState(false);
-
-    // Filter unique product names from catalog
-    const uniqueProducts = Array.from(new Set(productCatalog.map(p => p.productName)));
-
-    // Filter catalogs based on selected product
-    const filteredCatalogs = productCatalog.filter(p => p.productName === selectedProductName);
+    const [isLoading, setIsLoading] = useState(false);
+    const [availableProducts, setAvailableProducts] = useState([]);
+    const [allCatalogs, setAllCatalogs] = useState([]);
+    const [availableCatalogs, setAvailableCatalogs] = useState([]);
 
     const estimatedPrice = pricePerUnit * confirmedQuantity;
 
     useEffect(() => {
-        if (selectedCatalogNo) {
-            const product = productCatalog.find(p => p.catalog_no === selectedCatalogNo);
-            setProductInfo(product || null);
-        } else {
-            setProductInfo(null);
-        }
-    }, [selectedCatalogNo]);
-
-    useEffect(() => {
         if (inquiry && isOpen) {
-            const preselected = inquiry.selectedItem;
-            if (preselected) {
-                setSelectedProductName(preselected.product || '');
-                setSelectedCatalogNo(preselected.catalog_no || '');
-                setPricePerUnit(preselected.unitPrice || 0);
-            } else {
-                setSelectedProductName('');
-                setSelectedCatalogNo('');
-                setPricePerUnit(0);
-            }
-            setConfirmedQuantity(inquiry.quantity || 0);
-            setRemarks('');
+            const preselected = inquiry.selectedItem || {};
+            const baseProductName = preselected.type || preselected.firefighting_system || '';
+            const options = Array.isArray(preselected.catalog_options) ? preselected.catalog_options : [];
+            const normalizedCatalogs = options
+                .filter((option) => option?.catalog_no)
+                .map((option) => ({ ...option, productName: option.productName || baseProductName }));
+            const fallbackCatalogNo =
+                preselected.catalog_no ||
+                preselected.catalog_number ||
+                preselected.catalogNo ||
+                (preselected.id ? `ITEM-${preselected.id}` : '');
+            const fallbackCatalogs = fallbackCatalogNo
+                ? [{ catalog_no: fallbackCatalogNo, productName: baseProductName }]
+                : [];
+            const products = [baseProductName, ...normalizedCatalogs.map((item) => item.productName)]
+                .filter(Boolean)
+                .filter((item, idx, arr) => arr.indexOf(item) === idx);
+
+            const catalogsToUse = normalizedCatalogs.length > 0 ? normalizedCatalogs : fallbackCatalogs;
+            setAvailableProducts(products);
+            setAllCatalogs(catalogsToUse);
+            setAvailableCatalogs(catalogsToUse);
+            setSelectedProductName(baseProductName);
+            setSelectedCatalogNo(fallbackCatalogNo);
+            setPricePerUnit(preselected.price || 0);
+            setConfirmedQuantity(preselected.quantity || inquiry.quantity || 0);
+            setRemarks(preselected.maintenance_notes || '');
         }
     }, [inquiry, isOpen]);
+
+    useEffect(() => {
+        if (!selectedCatalogNo) {
+            setProductInfo(null);
+            return;
+        }
+
+        const currentItem = inquiry?.selectedItem || {};
+        const selectedCatalog = availableCatalogs.find((item) => item.catalog_no === selectedCatalogNo);
+        setProductInfo({
+            productName: selectedProductName || currentItem.type || currentItem.firefighting_system || 'Fire Equipment',
+            catalog_no: selectedCatalogNo,
+            capacity: selectedCatalog?.capacity || currentItem.capacity || '--',
+            type: selectedCatalog?.type || currentItem.type || '--',
+            manufacturer: selectedCatalog?.manufacturer || currentItem.manufacturer || '--',
+            specs: {
+                safetyCertification: selectedCatalog?.safetyCertification || currentItem.safetyCertification || '--',
+                cylinderMaterial: selectedCatalog?.cylinderMaterial || currentItem.cylinderMaterial || '--',
+                description: selectedCatalog?.description || currentItem.system_type || currentItem.maintenance_notes || 'No additional product description provided.'
+            }
+        });
+    }, [selectedCatalogNo, selectedProductName, availableCatalogs, inquiry]);
 
     if (!isOpen) return null;
 
     const requestedQuantity = inquiry?.quantity || 0;
     const isRemarksRequired = confirmedQuantity < requestedQuantity;
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         if (!selectedCatalogNo) {
-            alert('Please select a catalog number');
+            toast.error('Please select a catalog number');
             return;
         }
         if (isRemarksRequired && !remarks.trim()) {
-            alert('Please add remarks since confirmed quantity is less than requested.');
+            toast.error('Please add remarks since confirmed quantity is less than requested.');
             return;
         }
-        setIsSuccess(true);
-        setTimeout(() => {
-            setIsSuccess(false);
-            onClose();
-        }, 1500);
+
+        setIsLoading(true);
+        try {
+            await updateInquiryItem(inquiry.selectedItem.id, {
+                catalog_no: selectedCatalogNo,
+                quantity: confirmedQuantity,
+                price: pricePerUnit,
+                maintenance_notes: remarks
+            });
+            setIsSuccess(true);
+            toast.success('Item updated successfully');
+            setTimeout(() => {
+                setIsSuccess(false);
+                onClose();
+                onUpdate && onUpdate(); // Signal parent to refresh
+            }, 1000);
+        } catch (err) {
+            console.error('Update confirm error:', err);
+            toast.error('Failed to update item details');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -82,14 +124,8 @@ const NewUnitDetailModal = ({ isOpen, onClose, inquiry }) => {
                             </h3>
                             <div className="flex items-center gap-4 mt-1">
                                 <p className="text-slate-500 text-sm font-medium">
-                                    {inquiry?.customer} — {inquiry?.inquiryNo}
+                                    {inquiry?.customers?.business_name || inquiry?.business_name || 'Generic Client'} — {inquiry?.inquiry_no}
                                 </p>
-                                <button
-                                    onClick={() => setIsChatOpen(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-lg shadow-slate-200"
-                                >
-                                    <MessageCircle size={14} /> Message Customer
-                                </button>
                             </div>
                         </div>
                         <button onClick={onClose} className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 rounded-2xl transition-all">
@@ -112,11 +148,15 @@ const NewUnitDetailModal = ({ isOpen, onClose, inquiry }) => {
                                                 onChange={(e) => {
                                                     setSelectedProductName(e.target.value);
                                                     setSelectedCatalogNo('');
+                                                    const filtered = allCatalogs.filter((item) => (item.productName || e.target.value) === e.target.value);
+                                                    if (filtered.length > 0) {
+                                                        setAvailableCatalogs(filtered);
+                                                    }
                                                 }}
                                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-6 pr-12 appearance-none outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 font-bold text-slate-900 transition-all cursor-pointer"
                                             >
                                                 <option value="">Choose Product</option>
-                                                {uniqueProducts.map((name) => (
+                                                {availableProducts.map((name) => (
                                                     <option key={name} value={name}>{name}</option>
                                                 ))}
                                             </select>
@@ -136,7 +176,7 @@ const NewUnitDetailModal = ({ isOpen, onClose, inquiry }) => {
                                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-6 pr-12 appearance-none outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 font-bold text-slate-900 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 <option value="">{selectedProductName ? 'Choose Catalog No' : 'Select Product First'}</option>
-                                                {filteredCatalogs.map((item) => (
+                                                {availableCatalogs.map((item) => (
                                                     <option key={item.catalog_no} value={item.catalog_no}>
                                                         {item.catalog_no}
                                                     </option>
@@ -155,8 +195,8 @@ const NewUnitDetailModal = ({ isOpen, onClose, inquiry }) => {
                                                 <Package size={24} className="text-primary-400" />
                                             </div>
                                             <div className="flex-1">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Specifications Summary</p>
-                                                <h4 className="text-xl font-black tracking-tight">{productInfo.productName}</h4>
+                                                <p className="text-[10px] font-black text-white uppercase tracking-widest mb-0.5">Specifications Summary</p>
+                                                <h4 className="text-xl font-black text-white uppercase tracking-tight">{productInfo.productName}</h4>
                                                 <div className="flex items-center gap-3 mt-1 text-[10px] font-bold text-slate-400">
                                                     <span className="flex items-center gap-1"><Tag size={10} /> {productInfo.catalog_no}</span>
                                                     <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
@@ -242,9 +282,10 @@ const NewUnitDetailModal = ({ isOpen, onClose, inquiry }) => {
 
                                         <button
                                             onClick={handleConfirm}
-                                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-[1.5rem] shadow-xl transition-all active:scale-[0.98] text-sm uppercase tracking-[0.2em] mt-4 flex items-center justify-center gap-3"
+                                            disabled={isLoading}
+                                            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-[1.5rem] shadow-xl transition-all active:scale-[0.98] text-sm uppercase tracking-[0.2em] mt-4 flex items-center justify-center gap-3 disabled:opacity-50"
                                         >
-                                            Confirm Availability & Update
+                                            {isLoading ? <Loader2 className="animate-spin" size={20} /> : 'Confirm Availability & Update'}
                                         </button>
                                     </div>
                                 ) : (
@@ -275,13 +316,6 @@ const NewUnitDetailModal = ({ isOpen, onClose, inquiry }) => {
                 isOpen={isProductModalOpen}
                 onClose={() => setIsProductModalOpen(false)}
                 product={productInfo}
-            />
-
-            <MockChatModal
-                isOpen={isChatOpen}
-                onClose={() => setIsChatOpen(false)}
-                customerName={inquiry?.customer}
-                inquiryNo={inquiry?.inquiryNo}
             />
         </>
     );

@@ -24,6 +24,7 @@ const CustomerDetails = () => {
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [queries, setQueries] = useState([]);
+  const [inquiryItemsByInquiryId, setInquiryItemsByInquiryId] = useState({});
   const [loading, setLoading] = useState(true);
 
   const formatLatLng = (value, type) => {
@@ -48,17 +49,35 @@ const CustomerDetails = () => {
       } else {
         setCustomer(customerData);
 
-        // Fetch Customer Queries (from extinguishers table)
+        // Fetch Customer Queries from inquiries table (query header source)
         const { data: queriesData, error: queriesError } = await supabase
-          .from('extinguishers')
+          .from('inquiries')
           .select('*')
           .eq('customer_id', id)
-          .order('id', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (queriesError) {
           console.error('Error fetching customer queries:', queriesError);
         } else {
-          setQueries(queriesData || []);
+          const qList = queriesData || [];
+          setQueries(qList);
+          if (qList.length > 0) {
+            const inquiryIds = qList.map((q) => q.id);
+            const { data: itemsData, error: itemsError } = await supabase
+              .from('inquiry_items')
+              .select('id,inquiry_id,price,quantity,condition,status')
+              .in('inquiry_id', inquiryIds);
+            if (itemsError) {
+              console.error('Error fetching inquiry items:', itemsError);
+            } else {
+              const grouped = {};
+              (itemsData || []).forEach((it) => {
+                if (!grouped[it.inquiry_id]) grouped[it.inquiry_id] = [];
+                grouped[it.inquiry_id].push(it);
+              });
+              setInquiryItemsByInquiryId(grouped);
+            }
+          }
         }
       }
       setLoading(false);
@@ -130,38 +149,46 @@ const CustomerDetails = () => {
           </Section>
 
           {/* Customer Queries / Extinguishers */}
-          <Section title={`Customer Equipment & Queries (${queries.length})`}>
+          <Section title={`Customer Queries (${queries.length})`}>
             {queries.length > 0 ? (
               <div className="overflow-x-auto bg-white rounded-xl border border-slate-200">
                 <table className="min-w-full text-sm divide-y divide-slate-200">
                   <thead className="bg-slate-50">
                     <tr className="text-slate-600 uppercase text-[10px] tracking-wider font-bold">
                       <th className="px-4 py-4 text-left">S.No</th>
+                      <th className="px-4 py-4 text-left">Inquiry No</th>
                       <th className="px-4 py-4 text-left">Type</th>
                       <th className="px-4 py-4 text-left">Status</th>
-                      <th className="px-4 py-4 text-left">Condition</th>
-                      <th className="px-4 py-4 text-left">Price</th>
+                      <th className="px-4 py-4 text-left">Items</th>
+                      <th className="px-4 py-4 text-left">Estimated Value</th>
                       <th className="px-4 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {queries.map((query, index) => (
+                      (() => {
+                        const items = inquiryItemsByInquiryId[query.id] || [];
+                        const totalValue = items.reduce((acc, it) => acc + ((Number(it.price) || 0) * (Number(it.quantity) || 1)), 0);
+                        return (
                       <tr
                         key={query.id}
                         onClick={() => navigate(`/agent/query/${query.id}`)}
                         className="group hover:bg-slate-50 transition-colors cursor-pointer"
                       >
                         <td className="px-4 py-3 font-mono text-xs text-slate-400">#{query.id}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-700">{query.inquiry_no || '—'}</td>
                         {/* <td className="px-4 py-3 font-mono text-xs text-slate-500">{index + 1}</td> */}
                         <td className="px-4 py-3 font-medium text-slate-900">{query.type || 'Unknown'}</td>
                         <td className="px-4 py-3">
                           <QueryStatusBadge status={query.status} />
                         </td>
                         <td className="px-4 py-3">
-                          <ActiveStatusBadge status={query.query_status} />
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                            {items.length}
+                          </span>
                         </td>
                         <td className="px-4 py-3 font-bold text-green-700">
-                          {query.price ? `SAR ${query.price}` : 'N/A'}
+                          {totalValue > 0 ? `SAR ${totalValue}` : 'N/A'}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button
@@ -176,6 +203,8 @@ const CustomerDetails = () => {
                           </button>
                         </td>
                       </tr>
+                        );
+                      })()
                     ))}
                   </tbody>
                 </table>

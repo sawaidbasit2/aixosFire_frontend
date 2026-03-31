@@ -8,21 +8,24 @@ const useLocationTracker = () => {
     const lastUpdateRef = useRef(0);
 
     useEffect(() => {
-        if (!user || (user.role !== 'agent' && user.role !== 'customer')) return;
+        const role = String(user?.role || '').toLowerCase();
+        if (!user || (role !== 'agent' && role !== 'customer')) return;
 
-        console.log("Starting Location Tracker for", user.role);
+        console.log("Starting Location Tracker for", role);
 
         const updateLocation = async (lat, lng) => {
             const now = Date.now();
             // Throttle updates to every 30 seconds to save battery/bandwidth
             if (now - lastUpdateRef.current < 30000) return;
 
-            const table = user.role === 'agent' ? 'agents' : 'customers';
+            const table = role === 'agent' ? 'agents' : 'customers';
+            // DB columns are location_lat / location_lng on both agents and customers (not lat / lng).
+            const payload = { location_lat: lat, location_lng: lng };
 
             try {
                 const { error } = await supabase
                     .from(table)
-                    .update({ lat, lng })
+                    .update(payload)
                     .eq('id', user.id);
 
                 if (error) throw error;

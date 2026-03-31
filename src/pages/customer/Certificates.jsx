@@ -4,6 +4,14 @@ import { useAuth } from '../../context/AuthContext';
 import { ShieldCheck, Download, FileText, CheckCircle, Printer } from 'lucide-react';
 import PageLoader from '../../components/PageLoader';
 
+const hasValidDate = (value) => {
+    if (!value) return false;
+    const t = new Date(value).getTime();
+    return Number.isFinite(t) && t > 0;
+};
+
+const formatDateSafe = (value) => (hasValidDate(value) ? new Date(value).toLocaleDateString() : '—');
+
 const CertificateCard = ({ item }) => {
     return (
         <div className="bg-white rounded-3xl p-6 shadow-soft border border-slate-100 items-start flex flex-col h-full relative overflow-hidden group hover:shadow-lg transition-all">
@@ -32,7 +40,7 @@ const CertificateCard = ({ item }) => {
                     <div className="grid grid-cols-2 gap-y-4 text-sm">
                         <div>
                             <span className="block text-xs text-slate-400 font-semibold uppercase">Asset ID</span>
-                            <span className="font-mono font-bold text-slate-700">#{item.id}</span>
+                            <span className="font-mono font-bold text-slate-700">#{item.extinguisher_id ?? item.id}</span>
                         </div>
                         <div>
                             <span className="block text-xs text-slate-400 font-semibold uppercase">Type</span>
@@ -40,11 +48,11 @@ const CertificateCard = ({ item }) => {
                         </div>
                         <div className="col-span-2">
                             <span className="block text-xs text-slate-400 font-semibold uppercase">Inspection Date</span>
-                            <span className="font-bold text-slate-700">{new Date(item.install_date).toLocaleDateString()}</span>
+                            <span className="font-bold text-slate-700">{formatDateSafe(item.install_date)}</span>
                         </div>
                         <div className="col-span-2">
                             <span className="block text-xs text-slate-400 font-semibold uppercase">Valid Until</span>
-                            <span className="font-bold text-green-600">{new Date(item.expiry_date).toLocaleDateString()}</span>
+                            <span className="font-bold text-green-600">{formatDateSafe(item.expiry_date)}</span>
                         </div>
                     </div>
                 </div>
@@ -74,13 +82,14 @@ const Certificates = () => {
         const fetchInventory = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('extinguishers')
+                    .from('inquiry_items')
                     .select('*')
+                    .order('updated_at', { ascending: false })
                     .eq('customer_id', user.id);
 
                 if (error) throw error;
                 // Only showing Valid items
-                const validItems = (data || []).filter(item => new Date(item.expiry_date) > new Date());
+                const validItems = (data || []).filter(item => hasValidDate(item.expiry_date) && new Date(item.expiry_date) > new Date());
                 setInventory(validItems);
             } catch (err) {
                 console.error("Failed to fetch Inventory", err);

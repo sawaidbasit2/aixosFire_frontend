@@ -1,26 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Layout, Clock, MessageSquare,
-    DollarSign, Users, Bell,
-    Search, Filter, Plus, ChevronRight,
-    CheckCircle2
+    Layout, Clock,
+    DollarSign, Users, Filter, Plus, ChevronRight,
+    CheckCircle2, Loader2
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { getPartnerDashboard, getPartnerStats, getInquiries } from '../../api/partners';
 
-// Sub-components
-import ValidationTab from './components/ValidationTab';
-import MaintenanceTab from './components/MaintenanceTab';
-import RefilledTab from './components/RefilledTab';
-import NewUnitTab from './components/NewUnitTab';
+// Sub-components - No longer used inline; replaced by independent pages.
 
-// Dummy Data
-import {
-    validationInquiries,
-    maintenanceInquiries,
-    refilledInquiries,
-    newUnitInquiries
-} from '../../data/partnerDummyData';
+/** Statuses that count as "closed" for the Partner dashboard card (matches resolved / accepted work). */
+const CLOSED_LIKE_STATUSES = new Set([
+    'accepted',
+    'closed',
+    'completed',
+    'approved',
+    'inquiry closed'
+]);
 
-const StatCard = ({ icon: Icon, title, value, color, subtitle }) => (
+const countClosedLikeInquiries = (inquiries) => {
+    if (!Array.isArray(inquiries)) return 0;
+    return inquiries.filter((inq) => {
+        const s = (inq.status ?? '').toString().trim().toLowerCase();
+        return CLOSED_LIKE_STATUSES.has(s);
+    }).length;
+};
+
+const StatCard = (props) => {
+    const { icon: Icon, title, value, color, subtitle } = props;
+    return (
     <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-soft hover:shadow-lg transition-all duration-300 group cursor-pointer overflow-hidden relative">
         <div className={`absolute top-0 right-0 w-32 h-32 ${color} opacity-[0.03] -mr-8 -mt-8 rounded-full transition-transform group-hover:scale-150`}></div>
         <div className="flex justify-between items-start mb-4 relative z-10">
@@ -35,82 +43,97 @@ const StatCard = ({ icon: Icon, title, value, color, subtitle }) => (
             {subtitle && <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{subtitle}</p>}
         </div>
     </div>
-);
+    );
+};
 
 const PartnerDashboard = () => {
     const [filterType, setFilterType] = useState('All');
-    const [selectedInquiry, setSelectedInquiry] = useState(null);
-    const [stats] = useState({
-        activeInquiries: 12,
-        pendingInquiries: 5,
-        closedInquiries: 142,
-        totalSales: 12500,
-        totalAgents: 8
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [inquiries, setInquiries] = useState([]);
+    const [stats, setStats] = useState({
+        activeInquiries: 0,
+        pendingInquiries: 0,
+        closedInquiries: 0,
+        totalSales: 0,
+        totalAgents: 0
     });
 
-    // Consolidate all inquiries from data sources
-    const allInquiries = [
-        ...validationInquiries.map(inq => ({
-            ...inq,
-            inquiryType: 'Validation',
-            displayId: inq.id,
-            displayClient: inq.clientName,
-            originalData: inq
-        })),
-        ...maintenanceInquiries.map(inq => ({
-            ...inq,
-            inquiryType: 'Maintenance',
-            displayId: inq.inquiryNo || inq.id,
-            displayClient: inq.customerName,
-            originalData: inq
-        })),
-        ...refilledInquiries.map(inq => ({
-            ...inq,
-            inquiryType: 'Refilled',
-            displayId: inq.inquiryNo || inq.id,
-            displayClient: inq.customerName,
-            originalData: inq
-        })),
-        ...newUnitInquiries.map(inq => ({
-            ...inq,
-            inquiryType: 'New Unit',
-            displayId: inq.inquiryNo || inq.id,
-            displayClient: inq.customer,
-            originalData: inq
-        }))
-    ];
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            setLoading(true);
+            try {
+                const query = { type: filterType !== 'All' ? filterType : undefined };
+                const [dashboardData, statsData, inquiriesData] = await Promise.all([
+                    getPartnerDashboard(),
+                    getPartnerStats(),
+                    getInquiries(query)
+                ]);
+                const allInquiriesForStats =
+                    filterType === 'All'
+                        ? inquiriesData
+                        : await getInquiries({});
+                const dashboardStats = dashboardData?.stats || {};
+                const resolvedStats = {
+                    ...dashboardStats,
+                    ...statsData
+                };
+                const list = Array.isArray(allInquiriesForStats) ? allInquiriesForStats : [];
+                const closedFromList = countClosedLikeInquiries(list);
+                const apiClosed =
+                    Number(resolvedStats.closed_inquiries || 0) +
+                    Number(resolvedStats.accepted_inquiries || 0);
+                const closedInquiries = list.length > 0 ? closedFromList : apiClosed;
 
-    const filteredInquiries = filterType === 'All'
-        ? allInquiries
-        : allInquiries.filter(inq => inq.inquiryType === filterType);
+                if (import.meta.env.DEV) {
+                    console.debug('[PartnerDashboard] stats', {
+                        resolvedStats,
+                        closedFromList,
+                        apiClosed,
+                        closedInquiries,
+                        inquiriesLoaded: list.length
+                    });
+                }
 
-    const renderDetailView = () => {
-        if (!selectedInquiry) return null;
+                setStats({
+                    activeInquiries: resolvedStats.active_inquiries || 0,
+                    pendingInquiries: resolvedStats.pending_inquiries || 0,
+                    closedInquiries,
+                    totalSales: resolvedStats.total_sales || 0,
+                    totalAgents: resolvedStats.total_agents || 0
+                });
+                setInquiries(Array.isArray(inquiriesData) ? inquiriesData : []);
+                setError(null);
+            } catch (err) {
+                console.error('Dashboard fetch error:', err);
+                setError('Failed to load dashboard data. Please try again later.');
+            } finally {
+                setLoading(false);
+            }
+        };
 
-        const { inquiryType, originalData } = selectedInquiry;
+        fetchDashboardData();
+    }, [filterType]);
 
+
+    if (loading) {
         return (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <button
-                    onClick={() => setSelectedInquiry(null)}
-                    className="flex items-center gap-2 text-slate-500 hover:text-primary-500 transition-colors mb-6 font-bold text-sm"
-                >
-                    <ChevronRight size={18} className="rotate-180" /> Back to Global List
-                </button>
-
-                {inquiryType === 'Validation' && <ValidationTab data={[originalData]} initialInquiry={originalData} />}
-                {inquiryType === 'Maintenance' && <MaintenanceTab data={[originalData]} initialInquiry={originalData} />}
-                {inquiryType === 'Refilled' && <RefilledTab data={[originalData]} initialInquiry={originalData} />}
-                {inquiryType === 'New Unit' && <NewUnitTab data={[originalData]} initialInquiry={originalData} />}
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 size={48} className="text-primary-500 animate-spin" />
+                    <p className="text-slate-400 font-bold uppercase tracking-widest animate-pulse">Loading Dashboard...</p>
+                </div>
             </div>
         );
-    };
+    }
 
-    if (selectedInquiry) {
+    if (error) {
         return (
-            <div className="min-h-screen pb-20 animate-in fade-in duration-700">
-                <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-soft-xl overflow-hidden p-8">
-                    {renderDetailView()}
+            <div className="min-h-screen flex items-center justify-center p-8">
+                <div className="bg-red-50 border border-red-100 rounded-[2rem] p-12 text-center max-w-lg">
+                    <h3 className="text-red-900 text-xl font-black mb-2 tracking-tight">Data Sync Error</h3>
+                    <p className="text-red-600 text-sm font-medium mb-6">{error}</p>
+                    <button onClick={() => window.location.reload()} className="px-8 py-3 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all">Retry Sync</button>
                 </div>
             </div>
         );
@@ -123,8 +146,8 @@ const PartnerDashboard = () => {
                 <StatCard icon={Layout} title="Total Active" value={stats.activeInquiries} color="bg-primary-500" subtitle="Inquiries" />
                 <StatCard icon={Clock} title="Total Pending" value={stats.pendingInquiries} color="bg-amber-500" subtitle="Awaiting Action" />
                 <StatCard icon={CheckCircle2} title="Total Closed" value={stats.closedInquiries} color="bg-emerald-500" subtitle="Past 30 Days" />
-                <StatCard icon={DollarSign} title="Total Sales" value={`$${stats.totalSales.toLocaleString()}`} color="bg-indigo-500" subtitle="Gross Profit" />
-                <StatCard icon={Users} title="Total Agents" value={stats.totalAgents} color="bg-pink-500" subtitle="Active Field Teams" />
+                <StatCard icon={DollarSign} title="Total Sales" value={`$${(stats.totalSales || 0).toLocaleString()}`} color="bg-indigo-500" subtitle="Gross Profit" />
+                <StatCard icon={Users} title="Total Agents" value={stats.totalAgents || 0} color="bg-pink-500" subtitle="Active Field Teams" />
             </div>
 
             {/* Main Application Area */}
@@ -135,7 +158,7 @@ const PartnerDashboard = () => {
                             All <span className="text-primary-500">Inquiries.</span>
                         </h2>
                         <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">
-                            Showing {filteredInquiries.length} results
+                            Showing {inquiries.length} results
                         </p>
                     </div>
 
@@ -173,35 +196,44 @@ const PartnerDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {filteredInquiries.map((inq, idx) => (
-                                    <tr key={`${inq.inquiryType}-${inq.id}-${idx}`} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-8 py-6 font-black text-primary-600 text-sm tracking-tighter">
-                                            {inq.displayId}
+                                {inquiries.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="px-8 py-16 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
+                                            No data available
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <p className="font-bold text-slate-900">{inq.displayClient}</p>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${inq.inquiryType === 'Validation' ? 'bg-blue-50 text-blue-600' :
-                                                    inq.inquiryType === 'Refilled' ? 'bg-purple-50 text-purple-600' :
-                                                        inq.inquiryType === 'New Unit' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-                                                }`}>
-                                                {inq.inquiryType}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${inq.status === 'Active' || inq.status === 'Completed' || inq.status === 'Accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                                                }`}>
-                                                {inq.status}
-                                            </span>
-                                        </td>
+                                    </tr>
+                                )}
+                                {inquiries.map((inq) => (
+                                <tr key={inq.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <td className="px-8 py-6 font-black text-primary-600 text-sm tracking-tighter">
+                                        {inq.inquiry_no}
+                                    </td>
+                                    <td className="px-8 py-6">
+                                        <p className="font-bold text-slate-900">{inq.customers?.business_name || 'Generic Client'}</p>
+                                    </td>
+                                    <td className="px-8 py-6">
+                                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                                            (inq.type || inq.inquiry_type) === 'Validation' ? 'bg-blue-50 text-blue-600' :
+                                            (inq.type || inq.inquiry_type) === 'Refilled' ? 'bg-purple-50 text-purple-600' :
+                                            (inq.type || inq.inquiry_type) === 'New Unit' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+                                            }`}>
+                                            {inq.type || inq.inquiry_type || 'Unknown'}
+                                        </span>
+                                    </td>
+                                    <td className="px-8 py-6">
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                            ['active', 'completed', 'accepted'].includes(inq.status?.toLowerCase()) ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                            }`}>
+                                            {inq.status}
+                                        </span>
+                                    </td>
                                         <td className="px-8 py-6 text-right">
-                                            <button
-                                                onClick={() => setSelectedInquiry(inq)}
-                                                className="px-6 py-2 bg-slate-900 text-white hover:bg-primary-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-200 hover:shadow-primary"
+                                            <Link
+                                                to={`/partner/inquiry/${inq.id}`}
+                                                className="px-6 py-2 bg-slate-900 text-white hover:bg-primary-600 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-200 hover:shadow-primary inline-block"
                                             >
                                                 View Details
-                                            </button>
+                                            </Link>
                                         </td>
                                     </tr>
                                 ))}

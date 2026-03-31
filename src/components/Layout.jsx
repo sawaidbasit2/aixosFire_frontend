@@ -40,9 +40,9 @@ const Layout = ({ children }) => {
             ];
         } else if (role === 'customer') {
             return [
-                { icon: LayoutDashboard, label: 'Safety Overview', to: '/customer/dashboard' },
+                { icon: LayoutDashboard, label: 'Dashboard', to: '/customer/dashboard' },
                 { icon: FireExtinguisher, label: 'My Inventory', to: '/customer/inventory' },
-                { icon: ShoppingBag, label: 'Book Service', to: '/customer/booking' },
+                { icon: ShoppingBag, label: 'New inquiry', to: '/customer/booking' },
                 { icon: Clock, label: 'Service History', to: '/customer/history' },
                 { icon: Shield, label: 'Certificates', to: '/customer/certificates' },
             ];

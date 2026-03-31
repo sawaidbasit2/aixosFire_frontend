@@ -2,11 +2,7 @@ import React from 'react';
 import { FileText, Download, Calendar, User, History } from 'lucide-react';
 
 const DocumentManagement = ({ documents = [] }) => {
-    // Default dummy documents if none provided
-    const displayDocs = documents.length > 0 ? documents : [
-        { name: 'Site Survey Report.pdf', date: '2024-03-01', uploader: 'Admin', type: 'Survey' },
-        { name: 'Technical Report.xlsx', date: '2024-03-01', uploader: 'Technician', type: 'Survey' }
-    ];
+    const displayDocs = Array.isArray(documents) ? documents : [];
 
     return (
         <div className="space-y-4">
@@ -24,6 +20,13 @@ const DocumentManagement = ({ documents = [] }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
+                        {displayDocs.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="px-6 py-12 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
+                                    No data available
+                                </td>
+                            </tr>
+                        )}
                         {displayDocs.map((doc, idx) => (
                             <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
                                 <td className="px-6 py-4">

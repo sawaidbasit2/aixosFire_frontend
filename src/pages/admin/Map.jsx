@@ -47,12 +47,20 @@ const GlobalMap = () => {
     useEffect(() => {
         const fetchMapData = async () => {
             try {
-                const { data: agentsData } = await supabase.from('agents').select('id, name, territory, lat, lng');
-                const { data: customersData } = await supabase.from('customers').select('id, business_name, address, lat, lng');
+                const { data: agentsData } = await supabase
+                    .from('agents')
+                    .select('id, name, territory, location_lat, location_lng');
+                const { data: customersData } = await supabase
+                    .from('customers')
+                    .select('id, business_name, address, location_lat, location_lng');
 
                 setData({
-                    agents: (agentsData || []).filter(a => a.lat && a.lng),
-                    customers: (customersData || []).filter(c => c.lat && c.lng)
+                    agents: (agentsData || []).filter(
+                        (a) => a.location_lat != null && a.location_lng != null
+                    ),
+                    customers: (customersData || []).filter(
+                        (c) => c.location_lat != null && c.location_lng != null
+                    )
                 });
             } catch (err) {
                 console.error("Map data error", err);
@@ -85,7 +93,7 @@ const GlobalMap = () => {
                     )}
 
                     {data.agents.map(agent => (
-                        <Marker key={`a-${agent.id}`} position={[agent.lat, agent.lng]} icon={agentIcon}>
+                        <Marker key={`a-${agent.id}`} position={[agent.location_lat, agent.location_lng]} icon={agentIcon}>
                             <Popup>
                                 <div className="p-2">
                                     <h3 className="font-bold text-slate-900">{agent.name} (Agent)</h3>
@@ -97,7 +105,7 @@ const GlobalMap = () => {
                     ))}
 
                     {data.customers.map(cust => (
-                        <Marker key={`c-${cust.id}`} position={[cust.lat, cust.lng]} icon={customerIcon}>
+                        <Marker key={`c-${cust.id}`} position={[cust.location_lat, cust.location_lng]} icon={customerIcon}>
                             <Popup>
                                 <div className="p-2">
                                     <h3 className="font-bold text-slate-900">{cust.business_name}</h3>
