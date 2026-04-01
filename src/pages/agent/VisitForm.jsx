@@ -1218,7 +1218,7 @@ const VisitForm = () => {
                           </div>
                         )}
                       </div>
-                      <button 
+                      <button
                         onClick={() => {
                           setCameraTarget('customer');
                           setIsCameraOpen(true);
@@ -1388,7 +1388,7 @@ const VisitForm = () => {
                           ))}
                         </select>
                       </div>
-                      
+
                       <div className="md:col-span-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Photo Reference</label>
                         <div className="border border-dashed border-slate-300 rounded-lg h-[38px] flex items-center justify-center text-slate-400 text-xs hover:bg-white cursor-pointer"><Image size={14} className="mr-2" /> Upload Snapshot</div>
@@ -1399,7 +1399,7 @@ const VisitForm = () => {
                   {ext.mode === 'New Unit' && (
                     <div className="col-span-4 space-y-6 animate-fade-in">
 
-                      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-end gap-4">
                         {/* Fire Fighting System Category */}
                         <div>
                           <label
@@ -1527,7 +1527,7 @@ const VisitForm = () => {
                             (ext.quantity || 0) < 1 ||
                             ext.isLocked
                           }
-                          className={`w-full text-xs max-w-[100px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${(!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
+                          className={`w-full text-xs !h-[50px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${(!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
                             ? 'bg-gray-400 cursor-not-allowed text-white'
                             : 'bg-primary-600 hover:bg-primary-700 text-white'
                             }`}
@@ -1570,11 +1570,11 @@ const VisitForm = () => {
                         </div>
                         <div>
                           <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry Date</label>
-                          <input 
-                            type="date" 
-                            value={ext.expiryDate} 
-                            onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)} 
-                            className="input-field py-2 text-sm" 
+                          <input
+                            type="date"
+                            value={ext.expiryDate}
+                            onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)}
+                            className="input-field py-2 text-sm"
                           />
                         </div>
                       </div>
@@ -1648,7 +1648,7 @@ const VisitForm = () => {
                             </p>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-fade-in">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-fade-in">
                             <div>
                               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Base Price</label>
                               <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
@@ -1723,11 +1723,11 @@ const VisitForm = () => {
 
                       <div>
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry Date</label>
-                        <input 
-                          type="date" 
-                          value={ext.expiryDate} 
-                          onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)} 
-                          className="input-field py-2 text-sm" 
+                        <input
+                          type="date"
+                          value={ext.expiryDate}
+                          onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)}
+                          className="input-field py-2 text-sm"
                         />
                       </div>
                     </>
@@ -1736,7 +1736,7 @@ const VisitForm = () => {
                   {ext.mode === 'Maintenance' && (
                     <>
                       <div className="col-span-4 space-y-6 animate-fade-in">
-                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-end gap-4">
                           {/* Fire Fighting System Category */}
                           <div>
                             <label
@@ -1863,10 +1863,14 @@ const VisitForm = () => {
                             type="button"
                             onClick={() => addNewUnit(index)}
                             disabled={!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1 || ext.isLocked}
-                            className={`w-full text-xs max-w-[100px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${(!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
+                            className={`w-full text-xs !h-[50px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${(!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
                               ? 'bg-gray-400 cursor-not-allowed text-white'
                               : 'bg-primary-600 hover:bg-primary-700 text-white'
                               }`}
+                          // className={`w-full text-xs max-w-[100px] py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors ${(!ext.firefightingSystem || !ext.material || (ext.quantity || 0) < 1)
+                          //   ? 'bg-gray-400 cursor-not-allowed text-white'
+                          //   : 'bg-primary-600 hover:bg-primary-700 text-white'
+                          //   }`}
                           >
                             <Plus size={18} /> Add
                           </button>
@@ -1906,11 +1910,11 @@ const VisitForm = () => {
                           </div>
                           <div>
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry Date</label>
-                            <input 
-                              type="date" 
-                              value={ext.expiryDate} 
-                              onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)} 
-                              className="input-field py-2 text-sm" 
+                            <input
+                              type="date"
+                              value={ext.expiryDate}
+                              onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)}
+                              className="input-field py-2 text-sm"
                             />
                           </div>
                         </div>
@@ -2112,7 +2116,7 @@ const VisitForm = () => {
                               </p>
                             </div>
                           ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 animate-fade-in">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-fade-in">
                               <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Base Price</label>
                                 <div className="text-sm font-medium text-slate-700 bg-white border rounded-xl p-3 border-[#e2e8f0] text-center">
@@ -2275,7 +2279,7 @@ const VisitForm = () => {
       )}
 
       {/* Camera Capture Modal */}
-      <CameraCapture 
+      <CameraCapture
         isOpen={isCameraOpen}
         onClose={() => setIsCameraOpen(false)}
         onCapture={(file) => {
