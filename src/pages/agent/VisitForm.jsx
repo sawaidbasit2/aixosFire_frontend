@@ -161,7 +161,6 @@ const VisitForm = () => {
       refillStatus: 'Required',
       price: 180,
       expiryDate: '',
-      condition: 'Good',
       firefightingSystem: '',
       maintenanceVoiceNote: null,
       maintenanceNotes: '',
@@ -450,7 +449,7 @@ const VisitForm = () => {
       mode: 'Validation',
       type: 'ABC Dry Powder', customType: '', capacity: '6kg', quantity: 1,
       brand: '', seller: '', partner: '', customPartner: '', refillStatus: 'Required',
-      price: 180, expiryDate: '', condition: 'Good',
+      price: 180, expiryDate: '',
       firefightingSystem: '',
       maintenanceVoiceNote: null,       // ← Add yeh
       maintenanceNotes: '',             // ← Add yeh
@@ -903,7 +902,6 @@ const VisitForm = () => {
               price: item.price || 180,
               unit: item.unit || 'Pieces',
               system: item.firefightingSystem || null,
-              condition: item.condition || 'Good',
               status: item.mode === 'New Unit' ? 'New' : (item.mode === 'Refill' ? 'Refilled' : (item.mode === 'Validation' ? 'Valid' : 'Maintained')),
               catalog_no: item.catalog_no || null,
               maintenance_notes: item.maintenanceNotes || null,
@@ -929,7 +927,6 @@ const VisitForm = () => {
                 price: subPrice,
                 unit: sub.unit || 'Pieces',
                 system: sub.firefightingSystem || null,
-                condition: item.condition || 'Good',
                 status: 'New',
                 catalog_no: sub.catalog_no || null,
                 maintenance_notes: item.maintenanceNotes || null,
@@ -1369,15 +1366,20 @@ const VisitForm = () => {
                   {ext.mode === 'Validation' && (
                     <>
                       <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Condition</label>
-                        <select value={ext.condition} onChange={(e) => handleExtinguisherChange(index, 'condition', e.target.value)} className="input-field py-2 text-sm">
-                          <option>Good</option><option>Fair</option><option>Poor</option><option>Expired</option><option>Damaged</option>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Partner</label>
+                        <select
+                          value={ext.partner || ''}
+                          onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)}
+                          className="input-field py-2 text-sm"
+                          required
+                        >
+                          <option value="">{loadingPartners ? 'Loading...' : 'Select Partner'}</option>
+                          {partners.map(p => (
+                            <option key={p.id} value={p.id}>{p.business_name}</option>
+                          ))}
                         </select>
                       </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry</label>
-                        <input type="date" value={ext.expiryDate} onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)} className="input-field py-2 text-sm" />
-                      </div>
+                      
                       <div className="md:col-span-2">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Photo Reference</label>
                         <div className="border border-dashed border-slate-300 rounded-lg h-[38px] flex items-center justify-center text-slate-400 text-xs hover:bg-white cursor-pointer"><Image size={14} className="mr-2" /> Upload Snapshot</div>
