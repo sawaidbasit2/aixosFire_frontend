@@ -143,6 +143,7 @@ const VisitForm = () => {
     followUpDate: '',
     customerPhoto: null,
     voiceNote: null,
+    performedBy: 'Agent',
   });
 
   const [qrPreview, setQrPreview] = useState(null);
@@ -907,6 +908,7 @@ const VisitForm = () => {
               maintenance_notes: item.maintenanceNotes || null,
               maintenance_voice_url: voiceUrl,
               maintenance_unit_photo_url: photoUrl,
+              expiry_date: item.expiryDate || null,
               is_sub_unit: false,
             });
           }
@@ -932,6 +934,7 @@ const VisitForm = () => {
                 maintenance_notes: item.maintenanceNotes || null,
                 maintenance_voice_url: voiceUrl,
                 maintenance_unit_photo_url: photoUrl,
+                expiry_date: item.expiryDate || null,
                 is_sub_unit: true,
               });
             });
@@ -946,7 +949,8 @@ const VisitForm = () => {
           agent_id: user.id,
           visit_id: visitId,
           type: inquiryType,
-          priority: 'Medium'
+          priority: 'Medium',
+          performed_by: formData.performedBy || 'Agent'
         };
 
         if (allItemsPayload.length > 0) {
@@ -1559,7 +1563,15 @@ const VisitForm = () => {
                             </div>
                           )}
                         </div>
-                        {/* Seller aur Brand wale div remove kar diye */}
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry Date</label>
+                          <input 
+                            type="date" 
+                            value={ext.expiryDate} 
+                            onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)} 
+                            className="input-field py-2 text-sm" 
+                          />
+                        </div>
                       </div>
 
                       {ext.newUnits?.length > 0 && (
@@ -1693,7 +1705,6 @@ const VisitForm = () => {
                         )}
                       </div>
 
-                      {/* --- Quantity Input --- */}
                       <div className="">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Quantity</label>
                         <input
@@ -1702,6 +1713,16 @@ const VisitForm = () => {
                           min={1}
                           onChange={(e) => handleExtinguisherChange(index, 'quantity', parseInt(e.target.value) || 1)}
                           className="input-field py-2 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry Date</label>
+                        <input 
+                          type="date" 
+                          value={ext.expiryDate} 
+                          onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)} 
+                          className="input-field py-2 text-sm" 
                         />
                       </div>
                     </>
@@ -1877,6 +1898,15 @@ const VisitForm = () => {
                                 />
                               </div>
                             )}
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry Date</label>
+                            <input 
+                              type="date" 
+                              value={ext.expiryDate} 
+                              onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)} 
+                              className="input-field py-2 text-sm" 
+                            />
                           </div>
                         </div>
                         {ext.newUnits?.length > 0 && (
@@ -2207,6 +2237,25 @@ const VisitForm = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Follow-up Date</label>
                 <input type="date" name="followUpDate" value={formData.followUpDate} onChange={handleInputChange} className="input-field" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Performed By</label>
+                <select
+                  name="performedBy"
+                  value={formData.performedBy}
+                  onChange={handleInputChange}
+                  className="input-field"
+                >
+                  {extinguishers[0]?.mode === 'Validation' ? (
+                    <option value="Agent">Agent</option>
+                  ) : (
+                    <>
+                      <option value="Assigned Partner">Assigned Partner</option>
+                      <option value="Agent">Agent</option>
+                      <option value="Customer">Customer</option>
+                    </>
+                  )}
+                </select>
               </div>
             </div>
 
