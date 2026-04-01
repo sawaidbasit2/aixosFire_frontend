@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import bcrypt from 'bcryptjs';
 import { useRef } from 'react';
+import CameraCapture from '../../components/CameraCapture';
 
 const getDefaultUnit = (material) => {
   if (['Pipes', 'Hose Reels', 'Hydrants'].includes(material)) return 'Meter';
@@ -42,6 +43,9 @@ const VisitForm = () => {
   const [loadingPartners, setLoadingPartners] = useState(false);
   const debounceTimers = useRef([]);
   const searchDebounceRef = useRef(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState(null); // 'customer' or 'unit'
+  const [activeUnitIndex, setActiveUnitIndex] = useState(null);
 
   useEffect(() => {
     const fetchPartners = async () => {
@@ -1194,15 +1198,30 @@ const VisitForm = () => {
                   )}
                 </div>
                 <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                  <div>
+                  <div className="space-y-2">
                     <label className="block text-sm font-medium text-slate-700 mb-1">Customer Image (clear image of client office space/building)</label>
-                    <div className="relative border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center hover:border-primary-500 hover:bg-primary-50/10 transition-all cursor-pointer">
-                      <input type="file" onChange={handlePhotoUpload} accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" />
-                      {formData.customerPhoto ? (
-                        <img src={URL.createObjectURL(formData.customerPhoto)} className="h-16 w-16 object-cover rounded-lg" alt="Preview" />
-                      ) : (
-                        <Camera className="text-slate-400" size={24} />
-                      )}
+                    <div className="flex gap-4">
+                      <div className="flex-1 relative border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center hover:border-primary-500 hover:bg-primary-50/10 transition-all cursor-pointer">
+                        <input type="file" onChange={handlePhotoUpload} accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" />
+                        {formData.customerPhoto ? (
+                          <img src={URL.createObjectURL(formData.customerPhoto)} className="h-16 w-16 object-cover rounded-lg" alt="Preview" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <Image className="text-slate-400" size={24} />
+                            <span className="text-[10px] font-bold text-slate-500">Upload File</span>
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setCameraTarget('customer');
+                          setIsCameraOpen(true);
+                        }}
+                        className="flex-1 border-2 border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center hover:border-primary-500 hover:bg-primary-50/10 transition-all text-slate-500 hover:text-primary-600 group"
+                      >
+                        <Camera size={24} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[10px] font-bold mt-1">Take Photo</span>
+                      </button>
                     </div>
                   </div>
                   <div>
@@ -2198,6 +2217,21 @@ const VisitForm = () => {
           </div>
         </div>
       )}
+
+      {/* Camera Capture Modal */}
+      <CameraCapture 
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onCapture={(file) => {
+          if (cameraTarget === 'customer') {
+            setFormData(prev => ({ ...prev, customerPhoto: file }));
+          } else if (cameraTarget === 'unit' && activeUnitIndex !== null) {
+            setExtinguishers(prev => prev.map((it, i) =>
+              i === activeUnitIndex ? { ...it, maintenanceUnitPhoto: file } : it
+            ));
+          }
+        }}
+      />
     </div>
   );
 };
