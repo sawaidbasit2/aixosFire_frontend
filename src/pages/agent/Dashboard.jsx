@@ -250,9 +250,9 @@ const AgentDashboard = () => {
         if (now - lastUpdate < 10000) return; // update every 10 sec
         lastUpdate = now;
 
-        // ✅ Call backend just like login
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
-          const response = await fetch('http://localhost:5000/api/agents/location', {
+          const response = await fetch(`${API_URL}/agents/location`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

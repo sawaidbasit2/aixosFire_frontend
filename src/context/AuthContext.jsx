@@ -21,8 +21,10 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password, role) => {
     if (!email || !password || !role) return { success: false, error: 'Email, password, and role are required' };
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, role })
@@ -55,21 +57,23 @@ export const AuthProvider = ({ children }) => {
       let url = '';
       let options = {};
 
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
       if (role === 'agent') {
-        url = 'http://localhost:5000/api/auth/register/agent';
+        url = `${API_URL}/auth/register/agent`;
         options = {
           method: 'POST',
           body: data // FormData including profile_photo
         };
       } else if (role === 'customer') {
-        url = 'http://localhost:5000/api/auth/register/customer';
+        url = `${API_URL}/auth/register/customer`;
         options = {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
         };
       } else if (role === 'partner') {
-        url = 'http://localhost:5000/api/auth/register/partner';
+        url = `${API_URL}/auth/register/partner`;
         options = {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
