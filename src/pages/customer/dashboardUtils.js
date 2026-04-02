@@ -9,6 +9,13 @@ export const formatDateSafe = (v) => {
 };
 
 export const performedByLabel = (inquiry) => {
+    // New logic based on the explicit performed_by column
+    const pb = (inquiry?.performed_by || '').toString().trim();
+    if (pb === 'Agent') return `Agent: ${inquiry.agent_id || '—'}`;
+    if (pb === 'Assigned Partner') return 'Partner';
+    if (pb === 'Customer') return 'Customer';
+
+    // Legacy fallback logic
     const agent =
         inquiry?.agents?.name ||
         inquiry?.agent?.name ||

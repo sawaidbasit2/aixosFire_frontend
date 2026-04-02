@@ -133,6 +133,7 @@ const History = () => {
                                     <th className="py-3 pr-4">Inquiry</th>
                                     <th className="py-3 pr-4">Type</th>
                                     <th className="py-3 pr-4">Created</th>
+                                    <th className="py-3 pr-4">Performed by</th>
                                     <th className="py-3 pr-4">Internal ref</th>
                                     <th className="py-3">Status</th>
                                 </tr>
@@ -145,6 +146,7 @@ const History = () => {
                                             <td className="py-3 pr-4 font-bold text-primary-600">{row.inquiryNo}</td>
                                             <td className="py-3 pr-4 capitalize">{row.serviceType}</td>
                                             <td className="py-3 pr-4 text-slate-600">{formatDateSafe(row.serviceDate)}</td>
+                                            <td className="py-3 pr-4 text-slate-600 font-medium">{row.performedBy}</td>
                                             <td className="py-3 pr-4 text-slate-600 flex items-center gap-1">
                                                 <Hash size={12} /> {row.internalRef}
                                             </td>

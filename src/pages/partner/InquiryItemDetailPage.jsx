@@ -285,407 +285,408 @@ const InquiryItemDetailPage = () => {
             </Link>
 
             <div className="flex flex-col xl:flex-row gap-8 items-start">
-            <div className="flex-1 min-w-0 w-full bg-white rounded-[2rem] border border-slate-100 shadow-soft-xl p-6 md:p-10 space-y-10">
-                {/* Top: badges + extinguisher */}
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
-                    <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <span className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-700 border border-slate-200">
-                                {inquiry.inquiry_no || `INQ-${inquiryId}`}
-                            </span>
-                            <span
-                                className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${statusBadgeClass(displayStatus)}`}
-                            >
-                                {displayStatus}
-                            </span>
-                            <span className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-slate-900 text-white border border-slate-800">
-                                Line #{item.id}
-                            </span>
-                        </div>
-                        <p className="text-xs text-slate-400 font-mono flex items-center gap-2">
-                            <Hash size={12} />
-                            Inquiry ID {shortId(inquiry.id)} · Visit #{formatVal(inquiry.visit_id)} · Agent #
-                            {formatVal(inquiry.agent_id)}
-                        </p>
-                    </div>
-
-                    <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 lg:min-w-[220px]">
-                        <div className="p-2.5 rounded-xl bg-primary-100 text-primary-600">
-                            <FileText size={22} />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                                Extinguisher ID
-                            </p>
-                            <p className="text-lg font-black text-slate-900 tracking-tight">{extinguisherLabel(item)}</p>
-                            <p className="text-[10px] text-slate-500 mt-1 font-mono">DB id {item.extinguisher_id ?? '—'}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Customer header */}
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-                    <div>
-                        <h1 className="text-3xl md:text-4xl font-display font-black text-slate-900 tracking-tight mb-3">
-                            {businessName}
-                        </h1>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <p className="text-slate-600 flex items-center gap-2">
-                                <MapPin size={18} className="text-slate-400 shrink-0" />
-                                {address}
-                            </p>
-                            <button
-                                type="button"
-                                onClick={openChat}
-                                className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-widest px-5 py-3 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={!chatExtinguisherId}
-                                title={!chatExtinguisherId ? 'Link an extinguisher to enable chat' : 'Open chat'}
-                            >
-                                <MessageCircle size={18} />
-                                Message Customer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Customer contact */}
-                <div>
-                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <User size={16} />
-                        Customer contact
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        <DetailField label="Owner" value={formatVal(customer.owner_name)} />
-                        <DetailField
-                            label="Email"
-                            value={
-                                customer.email ? (
-                                    <a href={`mailto:${customer.email}`} className="text-primary-600 hover:underline">
-                                        {customer.email}
-                                    </a>
-                                ) : (
-                                    '—'
-                                )
-                            }
-                        />
-                        <DetailField
-                            label="Phone"
-                            value={
-                                customer.phone ? (
-                                    <a href={`tel:${customer.phone}`} className="text-primary-600 hover:underline">
-                                        {customer.phone}
-                                    </a>
-                                ) : (
-                                    '—'
-                                )
-                            }
-                        />
-                        <DetailField label="Customer ID" value={formatVal(customer.id ?? inquiry.customer_id)} />
-                    </div>
-                </div>
-
-                {/* Inquiry metadata */}
-                <div className="border-t border-slate-100 pt-10">
-                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Calendar size={16} />
-                        Inquiry metadata
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <DetailField label="Inquiry type" value={inquiryType} />
-                        <DetailField
-                            label="Priority"
-                            value={
-                                <span
-                                    className={
-                                        priority.toLowerCase() === 'high'
-                                            ? 'text-red-500 font-black uppercase'
-                                            : 'font-bold capitalize'
-                                    }
-                                >
-                                    {priority}
+                <div className="flex-1 min-w-0 w-full bg-white rounded-[2rem] border border-slate-100 shadow-soft-xl p-6 md:p-10 space-y-10">
+                    {/* Top: badges + extinguisher */}
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-700 border border-slate-200">
+                                    {inquiry.inquiry_no || `INQ-${inquiryId}`}
                                 </span>
-                            }
-                        />
-                        <DetailField label="Partner ID" value={formatVal(inquiry.partner_id)} />
-                        <DetailField label="Created" value={formatDateTime(inquiry.created_at)} />
-                        <DetailField label="Last updated" value={formatDateTime(inquiry.updated_at)} />
-                    </div>
-                </div>
-
-                {/* Inquiry information (summary) */}
-                <div className="border-t border-slate-100 pt-10">
-                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-6">
-                        <Info size={22} className="text-primary-500" />
-                        Inquiry information
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Service type</p>
-                            <p className="text-slate-900 font-bold text-lg capitalize">{inquiryType}</p>
-                        </div>
-                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Priority</p>
-                            <p
-                                className={`font-black text-lg uppercase ${
-                                    priority.toLowerCase() === 'high' ? 'text-red-500' : 'text-slate-900'
-                                }`}
-                            >
-                                {priority}
+                                <span
+                                    className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${statusBadgeClass(displayStatus)}`}
+                                >
+                                    {displayStatus}
+                                </span>
+                                <span className="px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest bg-slate-900 text-white border border-slate-800">
+                                    Line #{item.id}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-400 font-mono flex items-center gap-2">
+                                <Hash size={12} />
+                                Inquiry ID {shortId(inquiry.id)} · Visit #{formatVal(inquiry.visit_id)} · Agent #
+                                {formatVal(inquiry.agent_id)}
                             </p>
                         </div>
-                    </div>
-                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Issue / notes</p>
-                        <p className="text-slate-700 italic leading-relaxed">&quot;{issueText}&quot;</p>
-                    </div>
-                </div>
 
-                {/* Line item — product & commercial */}
-                <div className="border-t border-slate-100 pt-10">
-                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Package size={16} />
-                        Line item — product &amp; pricing
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        <DetailField label="Product type" value={formatVal(item.type)} />
-                        <DetailField label="Brand" value={formatVal(item.brand)} />
-                        <DetailField label="Capacity" value={formatVal(item.capacity)} />
-                        <DetailField label="Unit" value={formatVal(item.unit)} />
-                        <DetailField label="Quantity" value={formatVal(item.quantity)} />
-                        <DetailField
-                            label="Unit price"
-                            value={item.price != null ? `$${item.price}` : '—'}
-                        />
-                        <DetailField label="Condition" value={formatVal(item.condition)} />
-                        <DetailField label="Item status" value={formatVal(item.status)} />
-                        <DetailField label="Seller" value={formatVal(item.seller)} />
-                        <DetailField label="Partner (line)" value={formatVal(item.partner)} />
-                    </div>
-                </div>
-
-                {/* Identification & systems */}
-                <div className="border-t border-slate-100 pt-10">
-                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Hash size={16} />
-                        Identification &amp; systems
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        <DetailField label="Serial no." value={formatVal(item.serial_no)} />
-                        <DetailField label="Catalog no." value={formatVal(item.catalog_no)} />
-                        <DetailField label="Sub-unit" value={formatVal(item.is_sub_unit)} />
-                        <DetailField label="Query status" value={formatVal(item.query_status)} />
-                        <DetailField label="System" value={formatVal(item.system)} />
-                        <DetailField label="System type" value={formatVal(item.system_type)} />
+                        <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 lg:min-w-[220px]">
+                            <div className="p-2.5 rounded-xl bg-primary-100 text-primary-600">
+                                <FileText size={22} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                                    Extinguisher ID
+                                </p>
+                                <p className="text-lg font-black text-slate-900 tracking-tight">{extinguisherLabel(item)}</p>
+                                <p className="text-[10px] text-slate-500 mt-1 font-mono">DB id {item.extinguisher_id ?? '—'}</p>
+                            </div>
                         </div>
-                </div>
-
-                {/* Dates */}
-                <div className="border-t border-slate-100 pt-10">
-                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Calendar size={16} />
-                        Dates
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        <DetailField label="Install date" value={formatDateTime(item.install_date)} />
-                        <DetailField label="Expiry date" value={formatDateTime(item.expiry_date)} />
-                        <DetailField label="Last refill" value={formatDateTime(item.last_refill_date)} />
-                        <DetailField label="Item created" value={formatDateTime(item.created_at)} />
-                        <DetailField label="Item updated" value={formatDateTime(item.updated_at)} />
                     </div>
-                </div>
 
-                {/* Media */}
-                <div className="border-t border-slate-100 pt-10">
-                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <ImageIcon size={16} />
-                        Media &amp; attachments
-                    </h2>
-                    <div className="flex flex-wrap gap-6 p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                        <MediaLink href={item.certificate_photo} label="Certificate photo" icon={ImageIcon} />
-                        <MediaLink href={item.extinguisher_photo} label="Extinguisher photo" icon={ImageIcon} />
-                        <MediaLink href={item.maintenance_unit_photo_url} label="Maintenance unit photo" icon={ImageIcon} />
-                        <MediaLink href={item.maintenance_voice_url} label="Voice note" icon={Mic} />
-                        {!item.certificate_photo &&
-                            !item.extinguisher_photo &&
-                            !item.maintenance_unit_photo_url &&
-                            !item.maintenance_voice_url && (
-                                <p className="text-sm text-slate-500 italic">No media uploaded for this line item.</p>
-                            )}
-                    </div>
-                </div>
-
-                {/* Linked services */}
-                <div className="border-t border-slate-100 pt-10">
-                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Link2 size={16} />
-                        Inquiry item services
-                    </h2>
-                    {itemServices.length === 0 ? (
-                        <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                            No linked services on this line item.
-                        </p>
-                    ) : (
-                        <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    <tr>
-                                        <th className="px-4 py-3">Service</th>
-                                        <th className="px-4 py-3">Details</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {itemServices.map((s, i) => (
-                                        <tr key={s.id ?? i}>
-                                            <td className="px-4 py-3 font-medium text-slate-900">{formatVal(s.name || s.service_type || s.id)}</td>
-                                            <td className="px-4 py-3 text-slate-600">
-                                                <pre className="text-xs whitespace-pre-wrap font-sans">
-                                                    {JSON.stringify(s, null, 2)}
-                                                </pre>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                    {/* Customer header */}
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+                        <div>
+                            <h1 className="text-3xl md:text-4xl font-display font-black text-slate-900 tracking-tight mb-3">
+                                {businessName}
+                            </h1>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                <p className="text-slate-600 flex items-center gap-2">
+                                    <MapPin size={18} className="text-slate-400 shrink-0" />
+                                    {address}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={openChat}
+                                    className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-widest px-5 py-3 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={!chatExtinguisherId}
+                                    title={!chatExtinguisherId ? 'Link an extinguisher to enable chat' : 'Open chat'}
+                                >
+                                    <MessageCircle size={18} />
+                                    Message Customer
+                                </button>
+                            </div>
                         </div>
-                    )}
-                </div>
+                    </div>
 
-                {isMaintenanceInquiry && isInquiryAccepted && (
+                    {/* Customer contact */}
+                    <div>
+                        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <User size={16} />
+                            Customer contact
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <DetailField label="Owner" value={formatVal(customer.owner_name)} />
+                            <DetailField
+                                label="Email"
+                                value={
+                                    customer.email ? (
+                                        <a href={`mailto:${customer.email}`} className="text-primary-600 hover:underline">
+                                            {customer.email}
+                                        </a>
+                                    ) : (
+                                        '—'
+                                    )
+                                }
+                            />
+                            <DetailField
+                                label="Phone"
+                                value={
+                                    customer.phone ? (
+                                        <a href={`tel:${customer.phone}`} className="text-primary-600 hover:underline">
+                                            {customer.phone}
+                                        </a>
+                                    ) : (
+                                        '—'
+                                    )
+                                }
+                            />
+                            <DetailField label="Customer ID" value={formatVal(customer.id ?? inquiry.customer_id)} />
+                        </div>
+                    </div>
+
+                    {/* Inquiry metadata */}
                     <div className="border-t border-slate-100 pt-10">
                         <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <FileText size={16} />
-                            Technical documentation
+                            <Calendar size={16} />
+                            Inquiry metadata
                         </h2>
-                        {docsError && <p className="text-sm text-red-600 font-medium mb-4">{docsError}</p>}
-                        {docsLoading ? (
-                            <div className="flex justify-center py-10">
-                                <Loader2 className="animate-spin text-primary-500" size={32} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <DetailField label="Inquiry type" value={inquiryType} />
+                            <DetailField
+                                label="Priority"
+                                value={
+                                    <span
+                                        className={
+                                            priority.toLowerCase() === 'high'
+                                                ? 'text-red-500 font-black uppercase'
+                                                : 'font-bold capitalize'
+                                        }
+                                    >
+                                        {priority}
+                                    </span>
+                                }
+                            />
+                            <DetailField label="Partner ID" value={formatVal(inquiry.partner_id)} />
+                            <DetailField label="Created" value={formatDateTime(inquiry.created_at)} />
+                            <DetailField label="Last updated" value={formatDateTime(inquiry.updated_at)} />
+                        </div>
+                    </div>
+
+                    {/* Inquiry information (summary) */}
+                    <div className="border-t border-slate-100 pt-10">
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-6">
+                            <Info size={22} className="text-primary-500" />
+                            Inquiry information
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Service type</p>
+                                <p className="text-slate-900 font-bold text-lg capitalize">{inquiryType}</p>
                             </div>
+                            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Priority</p>
+                                <p
+                                    className={`font-black text-lg uppercase ${priority.toLowerCase() === 'high' ? 'text-red-500' : 'text-slate-900'
+                                        }`}
+                                >
+                                    {priority}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Issue / notes</p>
+                            <p className="text-slate-700 italic leading-relaxed">&quot;{issueText}&quot;</p>
+                        </div>
+                    </div>
+
+                    {/* Line item — product & commercial */}
+                    <div className="border-t border-slate-100 pt-10">
+                        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Package size={16} />
+                            Line item — product &amp; pricing
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <DetailField label="Product type" value={formatVal(item.type)} />
+                            <DetailField label="Brand" value={formatVal(item.brand)} />
+                            <DetailField label="Capacity" value={formatVal(item.capacity)} />
+                            <DetailField label="Unit" value={formatVal(item.unit)} />
+                            <DetailField label="Quantity" value={formatVal(item.quantity)} />
+                            <DetailField
+                                label="Unit price"
+                                value={item.price != null ? `$${item.price}` : '—'}
+                            />
+                            <DetailField label="Condition" value={formatVal(item.condition)} />
+                            <DetailField label="Item status" value={formatVal(item.status)} />
+                            <DetailField label="Seller" value={formatVal(item.seller)} />
+                            <DetailField label="Partner (line)" value={formatVal(item.partner)} />
+                        </div>
+                    </div>
+
+                    {/* Identification & systems */}
+                    <div className="border-t border-slate-100 pt-10">
+                        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Hash size={16} />
+                            Identification &amp; systems
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <DetailField label="Serial no." value={formatVal(item.serial_no)} />
+                            <DetailField label="Catalog no." value={formatVal(item.catalog_no)} />
+                            <DetailField label="Sub-unit" value={formatVal(item.is_sub_unit)} />
+                            <DetailField label="Query status" value={formatVal(item.query_status)} />
+                            <DetailField label="System" value={formatVal(item.system)} />
+                            <DetailField label="System type" value={formatVal(item.system_type)} />
+                        </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="border-t border-slate-100 pt-10">
+                        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Calendar size={16} />
+                            Dates
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <DetailField label="Install date" value={formatDateTime(item.install_date)} />
+                            <DetailField label="Expiry date" value={formatDateTime(item.expiry_date)} />
+                            {item.status === "Refilled" && (
+                                <DetailField label="Last refill" value={formatDateTime(item.last_refill_date)} />
+                            )}
+                            <DetailField label="Item created" value={formatDateTime(item.created_at)} />
+                            <DetailField label="Item updated" value={formatDateTime(item.updated_at)} />
+                        </div>
+                    </div>
+
+                    {/* Media */}
+                    <div className="border-t border-slate-100 pt-10">
+                        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <ImageIcon size={16} />
+                            Media &amp; attachments
+                        </h2>
+                        <div className="flex flex-wrap gap-6 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                            <MediaLink href={item.certificate_photo} label="Certificate photo" icon={ImageIcon} />
+                            <MediaLink href={item.extinguisher_photo} label="Extinguisher photo" icon={ImageIcon} />
+                            <MediaLink href={item.maintenance_unit_photo_url} label="Maintenance unit photo" icon={ImageIcon} />
+                            <MediaLink href={item.maintenance_voice_url} label="Voice note" icon={Mic} />
+                            {!item.certificate_photo &&
+                                !item.extinguisher_photo &&
+                                !item.maintenance_unit_photo_url &&
+                                !item.maintenance_voice_url && (
+                                    <p className="text-sm text-slate-500 italic">No media uploaded for this line item.</p>
+                                )}
+                        </div>
+                    </div>
+
+                    {/* Linked services */}
+                    <div className="border-t border-slate-100 pt-10">
+                        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <Link2 size={16} />
+                            Inquiry item services
+                        </h2>
+                        {itemServices.length === 0 ? (
+                            <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                No linked services on this line item.
+                            </p>
                         ) : (
-                            <div className="space-y-10">
-                                <div>
-                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
-                                        Site assessment
-                                    </h3>
-                                    {siteAssessment ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <div className="md:col-span-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                                    Observations
-                                                </p>
-                                                <p className="text-slate-800 text-sm whitespace-pre-wrap">
-                                                    {siteAssessment.observations || '—'}
-                                                </p>
-                                            </div>
-                                            <div className="md:col-span-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                                    Required services
-                                                </p>
-                                                <p className="text-slate-800 text-sm whitespace-pre-wrap">
-                                                    {siteAssessment.required_services || '—'}
-                                                </p>
-                                            </div>
-                                            <DetailField
-                                                label="Estimated cost ($)"
-                                                value={
-                                                    siteAssessment.estimated_cost != null &&
-                                                    siteAssessment.estimated_cost !== ''
-                                                        ? `$${siteAssessment.estimated_cost}`
-                                                        : '—'
-                                                }
-                                            />
-                                            <DetailField
-                                                label="Additional notes"
-                                                value={formatVal(siteAssessment.additional_notes)}
-                                            />
-                                            <DetailField
-                                                label="Assessment updated"
-                                                value={formatDateTime(siteAssessment.updated_at)}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                                            No site assessment on file yet. Use <strong>Start site assessment</strong> in the
-                                            panel to add one.
-                                        </p>
-                                    )}
-                                </div>
-                                <div>
-                                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
-                                        Inspection reports
-                                    </h3>
-                                    {inspectionReports.length === 0 ? (
-                                        <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                                            No inspection reports submitted yet. Use <strong>Upload inspection report</strong>{' '}
-                                            to attach a PDF or Excel file.
-                                        </p>
-                                    ) : (
-                                        <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                                            <table className="w-full text-left text-sm">
-                                                <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                    <tr>
-                                                        <th className="px-4 py-3">Title</th>
-                                                        <th className="px-4 py-3">Inspection date</th>
-                                                        <th className="px-4 py-3">File</th>
-                                                        <th className="px-4 py-3">Submitted</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {inspectionReports.map((rep) => (
-                                                        <tr key={rep.id}>
-                                                            <td className="px-4 py-3 font-semibold text-slate-900">
-                                                                {rep.report_title}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-slate-600">
-                                                                {rep.inspection_date
-                                                                    ? new Date(rep.inspection_date).toLocaleDateString()
-                                                                    : '—'}
-                                                            </td>
-                                                            <td className="px-4 py-3">
-                                                                {rep.file_url ? (
-                                                                    <a
-                                                                        href={rep.file_url}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="text-primary-600 font-bold text-xs uppercase tracking-wide hover:underline"
-                                                                    >
-                                                                        Open
-                                                                    </a>
-                                                                ) : (
-                                                                    '—'
-                                                                )}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-slate-500 text-xs">
-                                                                {formatDateTime(rep.created_at)}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </div>
+                            <div className="rounded-2xl border border-slate-100 overflow-hidden">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <tr>
+                                            <th className="px-4 py-3">Service</th>
+                                            <th className="px-4 py-3">Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {itemServices.map((s, i) => (
+                                            <tr key={s.id ?? i}>
+                                                <td className="px-4 py-3 font-medium text-slate-900">{formatVal(s.name || s.service_type || s.id)}</td>
+                                                <td className="px-4 py-3 text-slate-600">
+                                                    <pre className="text-xs whitespace-pre-wrap font-sans">
+                                                        {JSON.stringify(s, null, 2)}
+                                                    </pre>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>
+
+                    {isMaintenanceInquiry && isInquiryAccepted && (
+                        <div className="border-t border-slate-100 pt-10">
+                            <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <FileText size={16} />
+                                Technical documentation
+                            </h2>
+                            {docsError && <p className="text-sm text-red-600 font-medium mb-4">{docsError}</p>}
+                            {docsLoading ? (
+                                <div className="flex justify-center py-10">
+                                    <Loader2 className="animate-spin text-primary-500" size={32} />
+                                </div>
+                            ) : (
+                                <div className="space-y-10">
+                                    <div>
+                                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
+                                            Site assessment
+                                        </h3>
+                                        {siteAssessment ? (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="md:col-span-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                                        Observations
+                                                    </p>
+                                                    <p className="text-slate-800 text-sm whitespace-pre-wrap">
+                                                        {siteAssessment.observations || '—'}
+                                                    </p>
+                                                </div>
+                                                <div className="md:col-span-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                                                        Required services
+                                                    </p>
+                                                    <p className="text-slate-800 text-sm whitespace-pre-wrap">
+                                                        {siteAssessment.required_services || '—'}
+                                                    </p>
+                                                </div>
+                                                <DetailField
+                                                    label="Estimated cost ($)"
+                                                    value={
+                                                        siteAssessment.estimated_cost != null &&
+                                                            siteAssessment.estimated_cost !== ''
+                                                            ? `$${siteAssessment.estimated_cost}`
+                                                            : '—'
+                                                    }
+                                                />
+                                                <DetailField
+                                                    label="Additional notes"
+                                                    value={formatVal(siteAssessment.additional_notes)}
+                                                />
+                                                <DetailField
+                                                    label="Assessment updated"
+                                                    value={formatDateTime(siteAssessment.updated_at)}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                                No site assessment on file yet. Use <strong>Start site assessment</strong> in the
+                                                panel to add one.
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
+                                            Inspection reports
+                                        </h3>
+                                        {inspectionReports.length === 0 ? (
+                                            <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                                No inspection reports submitted yet. Use <strong>Upload inspection report</strong>{' '}
+                                                to attach a PDF or Excel file.
+                                            </p>
+                                        ) : (
+                                            <div className="rounded-2xl border border-slate-100 overflow-hidden">
+                                                <table className="w-full text-left text-sm">
+                                                    <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                        <tr>
+                                                            <th className="px-4 py-3">Title</th>
+                                                            <th className="px-4 py-3">Inspection date</th>
+                                                            <th className="px-4 py-3">File</th>
+                                                            <th className="px-4 py-3">Submitted</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {inspectionReports.map((rep) => (
+                                                            <tr key={rep.id}>
+                                                                <td className="px-4 py-3 font-semibold text-slate-900">
+                                                                    {rep.report_title}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-slate-600">
+                                                                    {rep.inspection_date
+                                                                        ? new Date(rep.inspection_date).toLocaleDateString()
+                                                                        : '—'}
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    {rep.file_url ? (
+                                                                        <a
+                                                                            href={rep.file_url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-primary-600 font-bold text-xs uppercase tracking-wide hover:underline"
+                                                                        >
+                                                                            Open
+                                                                        </a>
+                                                                    ) : (
+                                                                        '—'
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-slate-500 text-xs">
+                                                                    {formatDateTime(rep.created_at)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                </div>
+
+                {isInquiryPending && (
+                    <PartnerActionCard
+                        onAccept={() => handleStatusUpdate('accepted')}
+                        onReject={() => handleStatusUpdate('rejected')}
+                        disabled={actionLoading}
+                    />
                 )}
-
-            </div>
-
-            {isInquiryPending && (
-                <PartnerActionCard
-                    onAccept={() => handleStatusUpdate('accepted')}
-                    onReject={() => handleStatusUpdate('rejected')}
-                    disabled={actionLoading}
-                />
-            )}
-            {isMaintenanceInquiry && isInquiryAccepted && (
-                <PartnerPostAcceptCard
-                    inquiryId={inquiryId}
-                    itemId={itemId}
-                    onUploadReport={() => setInspectionModalOpen(true)}
-                />
-            )}
+                {isMaintenanceInquiry && isInquiryAccepted && (
+                    <PartnerPostAcceptCard
+                        inquiryId={inquiryId}
+                        itemId={itemId}
+                        onUploadReport={() => setInspectionModalOpen(true)}
+                    />
+                )}
             </div>
 
             {chatExtinguisherId && (
