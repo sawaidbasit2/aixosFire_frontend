@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Shield, ArrowLeft, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { API_URL } from '../api/client';
 
 const ForgotPassword = () => {
     const { role } = useParams();
@@ -16,7 +17,6 @@ const ForgotPassword = () => {
         e.preventDefault();
         setLoading(true);
         setError('');
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
             const res = await fetch(`${API_URL}/auth/forgot-password`, {
                 method: 'POST',
@@ -34,7 +34,6 @@ const ForgotPassword = () => {
         e.preventDefault();
         setLoading(true);
         setError('');
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
             const res = await fetch(`${API_URL}/auth/reset-password`, {
                 method: 'POST',

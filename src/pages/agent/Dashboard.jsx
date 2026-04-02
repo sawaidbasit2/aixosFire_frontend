@@ -14,6 +14,7 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import { useRef } from 'react';
 import ChatModal from '../../components/Chat/ChatModal';
 import { MOCK_MESSAGES } from '../../data/mockMessages';
+import { API_URL } from '../../api/client';
 
 let DefaultIcon = L.icon({
   iconUrl: icon,
@@ -250,7 +251,6 @@ const AgentDashboard = () => {
         if (now - lastUpdate < 10000) return; // update every 10 sec
         lastUpdate = now;
 
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
         try {
           const response = await fetch(`${API_URL}/agents/location`, {
             method: 'POST',

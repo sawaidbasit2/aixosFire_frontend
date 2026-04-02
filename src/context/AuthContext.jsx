@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { API_URL } from '../api/client';
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
@@ -20,8 +21,6 @@ export const AuthProvider = ({ children }) => {
   // LOGIN
   const login = async (email, password, role) => {
     if (!email || !password || !role) return { success: false, error: 'Email, password, and role are required' };
-
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -56,8 +55,6 @@ export const AuthProvider = ({ children }) => {
     try {
       let url = '';
       let options = {};
-
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
       if (role === 'agent') {
         url = `${API_URL}/auth/register/agent`;
