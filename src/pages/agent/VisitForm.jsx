@@ -972,7 +972,7 @@ const VisitForm = () => {
   };
 
   return (
-    <div className="relative min-h-[500px] max-w-4xl mx-auto p-4 md:p-8">
+    <div className="relative min-h-[500px] max-w-4xl mx-auto p-2 md:p-8">
       {loading && <PageLoader message="Processing your visit log..." />}
       {/* Header / Stepper */}
       <div className="flex items-center justify-between mb-8">
@@ -996,9 +996,11 @@ const VisitForm = () => {
 
       {/* Step 1: Customer Identification */}
       {step === 1 && (
-        <div className="bg-white p-8 rounded-3xl shadow-soft border border-slate-100 animate-fade-in">
+        <div className="bg-white p-5 md:p-8 rounded-3xl shadow-soft border border-slate-100 animate-fade-in">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-            <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><UserPlus size={24} /></div>
+            <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
+              <UserPlus size={24} />
+            </div>
             <div>
               <h3 className="text-xl font-bold text-slate-900">Customer Identification</h3>
               <p className="text-sm text-slate-500">
@@ -1007,29 +1009,47 @@ const VisitForm = () => {
             </div>
           </div>
 
-          <div className="mb-6 flex gap-4">
+          {/* Toggle Buttons - Fixed for mobile */}
+          <div className="mb-6 grid grid-cols-2 gap-3">
             <button
-              onClick={() => { setIsNewCustomer(false); setFormData({ ...formData, customerId: null }); }}
-              className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all border-2 ${!isNewCustomer ? 'bg-primary-50 border-primary-500 text-primary-700' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+              onClick={() => {
+                setIsNewCustomer(false);
+                setFormData({ ...formData, customerId: null });
+              }}
+              className={`py-3.5 px-4 rounded-2xl text-sm font-bold transition-all border-2 
+          ${!isNewCustomer
+                  ? 'bg-primary-50 border-primary-500 text-primary-700 shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
             >
               Find Existing Customer
             </button>
+
             <button
-              onClick={() => { setIsNewCustomer(true); setFormData({ ...formData, customerId: null }); setSearchQuery(''); }}
-              className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all border-2 ${isNewCustomer ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
+              onClick={() => {
+                setIsNewCustomer(true);
+                setFormData({ ...formData, customerId: null });
+                setSearchQuery('');
+              }}
+              className={`py-3.5 px-4 rounded-2xl text-sm font-bold transition-all border-2 
+          ${isNewCustomer
+                  ? 'bg-green-50 border-green-500 text-green-700 shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
             >
               Create New Lead
             </button>
           </div>
 
+          {/* Search Section */}
           {!isNewCustomer && !formData.customerId && (
-            <div className="mb-8 relative animate-fade-in">
+            <div className="mb-8 relative">
               <label className="block text-sm font-medium text-slate-700 mb-2">Search Customer Database</label>
               <div className="relative">
                 <Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${isSearching ? 'text-primary-500 animate-pulse' : 'text-slate-400'}`} size={20} />
                 <input
                   type="text"
-                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all shadow-sm"
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
                   placeholder="Search by ID, Business Name or Phone..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
@@ -1040,213 +1060,259 @@ const VisitForm = () => {
                   </div>
                 )}
               </div>
+
+              {/* Search Results Dropdown */}
               {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white mt-2 rounded-xl shadow-xl border border-slate-100 z-10 max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 bg-white mt-2 rounded-2xl shadow-xl border border-slate-100 z-50 max-h-64 overflow-y-auto">
                   {searchResults.map(cust => (
-                    <div key={cust.id} onClick={() => selectCustomer(cust)} className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex justify-between items-center group">
-                      <div>
+                    <div
+                      key={cust.id}
+                      onClick={() => selectCustomer(cust)}
+                      className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 flex justify-between items-center group"
+                    >
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-slate-900">{cust.business_name}</p>
-                          <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">ID: {cust.id}</span>
+                          <p className="font-bold text-slate-900 truncate">{cust.business_name}</p>
+                          <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono shrink-0">ID: {cust.id}</span>
                         </div>
-                        <p className="text-sm text-slate-500">{cust.address}</p>
+                        <p className="text-sm text-slate-500 truncate">{cust.address}</p>
                       </div>
-                      <ArrowRight size={18} className="text-slate-300 group-hover:text-primary-500 transition-colors" />
+                      <ArrowRight size={18} className="text-slate-300 group-hover:text-primary-500 transition-colors ml-3" />
                     </div>
                   ))}
                 </div>
               )}
+
               {searchQuery.trim().length > 0 && !isSearching && searchResults.length === 0 && (
-                <div className="absolute top-full left-0 right-0 bg-white mt-2 p-4 rounded-xl shadow-lg border border-slate-100 z-10 text-center text-slate-500 text-sm">
+                <div className="mt-2 p-4 bg-white rounded-2xl border border-slate-100 text-center text-slate-500 text-sm">
                   No matches found for "{searchQuery}"
                 </div>
               )}
             </div>
           )}
 
+          {/* Form Fields - When customer is selected or new lead */}
           {(isNewCustomer || formData.customerId) && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Status</span>
-                  <div className="flex items-center gap-2">
-                    <p className={`font-bold ${isNewCustomer ? 'text-green-600' : 'text-blue-600'}`}>
-                      {isNewCustomer ? 'Creating New Lead' : 'Existing Customer Selected'}
-                    </p>
-                    {!isNewCustomer && (
-                      <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono font-bold">#{formData.customerId}</span>
-                    )}
-                  </div>
+            <div className="space-y-6">
+              {/* Status Bar */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</span>
+                  <p className={`font-bold mt-1 ${isNewCustomer ? 'text-green-600' : 'text-blue-600'}`}>
+                    {isNewCustomer ? 'Creating New Lead' : 'Existing Customer Selected'}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {!isNewCustomer && (
+                {!isNewCustomer && (
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => {
-                        if (isEditingCustomer) {
-                          handleUpdateCustomer();
-                        } else {
-                          setIsEditingCustomer(true);
-                        }
-                      }}
+                      onClick={() => isEditingCustomer ? handleUpdateCustomer() : setIsEditingCustomer(true)}
                       disabled={loading}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isEditingCustomer ? 'bg-green-600 text-white shadow-md' : 'bg-white text-primary-600 border border-primary-200 hover:bg-primary-50'}`}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5
+                  ${isEditingCustomer
+                          ? 'bg-green-600 text-white'
+                          : 'bg-white border border-primary-200 text-primary-600 hover:bg-primary-50'
+                        }`}
                     >
-                      {loading && isEditingCustomer ? (
-                        <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
+                      {isEditingCustomer ? (
+                        loading ? 'Saving...' : <>Save Changes</>
                       ) : (
-                        isEditingCustomer ? <><Check size={14} /> Save Edit</> : <><Pencil size={14} /> Edit Customer</>
+                        <>Edit Customer</>
                       )}
                     </button>
-                  )}
-                  {!isNewCustomer && (
+
                     <button
                       onClick={() => {
                         if (isEditingCustomer) {
                           setIsEditingCustomer(false);
-                          // Reset to search if needed, but here we just cancel edit
                         } else {
                           setFormData({ ...formData, customerId: null });
                           setSearchQuery('');
                         }
                       }}
-                      className="text-xs font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                      className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                     >
                       {isEditingCustomer ? 'Cancel' : 'Clear'}
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Business Name" name="businessName" value={formData.businessName} onChange={handleInputChange} required={isNewCustomer} disabled={!isNewCustomer && !isEditingCustomer} />
-                <Input label="Owner Name" name="ownerName" value={formData.ownerName} onChange={handleInputChange} disabled={!isNewCustomer && !isEditingCustomer} />
-                <Input label="Phone Contact" name="phone" type='number' value={formData.phone} onChange={handleInputChange} required={isNewCustomer} disabled={!isNewCustomer && !isEditingCustomer} />
-                <Input label="Email Address" name="email" type='email' value={formData.email} onChange={handleInputChange} disabled={!isNewCustomer && !isEditingCustomer} />
+              {/* Form Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+                <Input
+                  label="Business Name"
+                  name="businessName"
+                  value={formData.businessName}
+                  onChange={handleInputChange}
+                  required={isNewCustomer}
+                  disabled={!isNewCustomer && !isEditingCustomer}
+                />
+                <Input
+                  label="Owner Name"
+                  name="ownerName"
+                  value={formData.ownerName}
+                  onChange={handleInputChange}
+                  disabled={!isNewCustomer && !isEditingCustomer}
+                />
+                <Input
+                  label="Phone Contact"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required={isNewCustomer}
+                  disabled={!isNewCustomer && !isEditingCustomer}
+                />
+                <Input
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  disabled={!isNewCustomer && !isEditingCustomer}
+                />
 
                 {isNewCustomer && (
-                  <div className="relative w-full">
-                    <Input label="Password" name="password" type={showPassword ? "text" : "password"} value={formData.password} onChange={handleInputChange} required={isNewCustomer} placeholder="Customer login password" />
+                  <div className="relative md:col-span-2">
+                    <Input
+                      label="Password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="Customer login password"
+                    />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-[38px] text-gray-500"
+                      className="absolute right-4 top-[42px] text-slate-400 hover:text-slate-600"
                     >
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
                 )}
 
-                <div className={`md:col-span-${isNewCustomer ? '1' : '2'} relative`}>
+                {/* Address with Location Button */}
+                <div className="md:col-span-2 relative">
                   <Input
                     label="Site Address"
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
-                    placeholder={isFetchingLocation ? "Fetching location..." : "Enter site address or use button"}
+                    placeholder={isFetchingLocation ? "Fetching location..." : "Enter site address"}
                     disabled={isFetchingLocation || (!isNewCustomer && !isEditingCustomer)}
                   />
                   {(isNewCustomer || isEditingCustomer) && (
                     <button
                       onClick={fetchLocation}
                       disabled={isFetchingLocation}
-                      className={`absolute right-2 top-8 p-2 rounded-lg transition-all ${isFetchingLocation ? 'text-gray-400 cursor-wait' : 'text-primary-600 hover:bg-primary-50 active:scale-95'}`}
-                      title="Get Current Location"
+                      className="absolute right-3 top-9 p-2 text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
                     >
                       {isFetchingLocation ? (
                         <div className="animate-spin h-5 w-5 border-2 border-primary-500 border-t-transparent rounded-full" />
                       ) : (
-                        <MapPin size={20} />
+                        <MapPin size={22} />
                       )}
                     </button>
                   )}
                 </div>
-                <div className="md:col-span-2 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Business Category</label>
-                    <select
-                      name="businessType"
-                      value={formData.businessType}
-                      onChange={handleInputChange}
-                      className="input-field"
-                      disabled={!isNewCustomer && !isEditingCustomer}
-                    >
-                      <optgroup label="Retail Store">
-                        <option>Retail Store - Grocery</option>
-                        <option>Retail Store - Clothing</option>
-                        <option>Retail Store - Electronics</option>
-                        <option>Retail Store - Pharmacy</option>
-                        <option>Retail Store - Other</option>
-                      </optgroup>
-                      <option>Corporate Office</option>
-                      <option>Restaurant / Cafe</option>
-                      <option>Industrial Factory</option>
-                      <option>Warehouse</option>
-                      <option>Educational Institute</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
 
-                  {formData.businessType === 'Other' && (
-                    <div className="animate-fade-in pl-1">
-                      <label className="block text-sm font-medium text-slate-600 mb-1">
-                        Specify business type
-                      </label>
+                {/* Business Category */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Business Category</label>
+                  <select
+                    name="businessType"
+                    value={formData.businessType}
+                    onChange={handleInputChange}
+                    className="w-full p-4 rounded-2xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                    disabled={!isNewCustomer && !isEditingCustomer}
+                  >
+                    {/* Your options here */}
+                    <optgroup label="Retail Store">
+                      <option>Retail Store - Grocery</option>
+                      <option>Retail Store - Clothing</option>
+                      <option>Retail Store - Electronics</option>
+                      <option>Retail Store - Pharmacy</option>
+                      <option>Retail Store - Other</option>
+                    </optgroup>
+                    <option>Corporate Office</option>
+                    <option>Restaurant / Cafe</option>
+                    <option>Industrial Factory</option>
+                    <option>Warehouse</option>
+                    <option>Educational Institute</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+
+                {/* File Upload + Camera - Fixed mobile layout */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Customer Image (office / building)
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Upload File */}
+                    <div className="border-2 border-dashed border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center hover:border-primary-400 transition-all cursor-pointer relative">
                       <input
-                        type="text"
-                        name="customBusinessType"
-                        value={formData.customBusinessType}
-                        onChange={handleInputChange}
-                        placeholder="e.g. Beauty Salon, Car Wash, Gym, etc."
-                        className="input-field"
-                        required
-                        disabled={!isNewCustomer && !isEditingCustomer}
+                        type="file"
+                        onChange={handlePhotoUpload}
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
                       />
+                      {formData.customerPhoto ? (
+                        <img
+                          src={URL.createObjectURL(formData.customerPhoto)}
+                          className="h-20 w-20 object-cover rounded-xl"
+                          alt="Preview"
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <Image className="mx-auto text-slate-400" size={28} />
+                          <p className="text-xs font-medium text-slate-500 mt-2">Upload Image</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Take Photo */}
+                    <button
+                      onClick={() => {
+                        setCameraTarget('customer');
+                        setIsCameraOpen(true);
+                      }}
+                      className="border-2 border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center hover:border-primary-400 hover:bg-primary-50/10 transition-all"
+                    >
+                      <Camera size={28} className="text-slate-500" />
+                      <p className="text-xs font-medium text-slate-500 mt-2">Take Photo</p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* QR Code Section */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Identity QR Code</label>
+                  <button
+                    onClick={generateQRPreview}
+                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-sm font-bold transition-colors"
+                  >
+                    Generate Local QR Code
+                  </button>
+                  {qrPreview && (
+                    <div className="mt-4 flex justify-center">
+                      <img src={qrPreview} className="h-20 w-20 border rounded-2xl" alt="QR Preview" />
                     </div>
                   )}
                 </div>
-                <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Customer Image (clear image of client office space/building)</label>
-                    <div className="flex gap-4">
-                      <div className="flex-1 relative border-2 border-dashed border-slate-300 rounded-xl p-4 flex flex-col items-center justify-center hover:border-primary-500 hover:bg-primary-50/10 transition-all cursor-pointer">
-                        <input type="file" onChange={handlePhotoUpload} accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" />
-                        {formData.customerPhoto ? (
-                          <img src={URL.createObjectURL(formData.customerPhoto)} className="h-16 w-16 object-cover rounded-lg" alt="Preview" />
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <Image className="text-slate-400" size={24} />
-                            <span className="text-[10px] font-bold text-slate-500">Upload File</span>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => {
-                          setCameraTarget('customer');
-                          setIsCameraOpen(true);
-                        }}
-                        className="flex-1 border-2 border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center hover:border-primary-500 hover:bg-primary-50/10 transition-all text-slate-500 hover:text-primary-600 group"
-                      >
-                        <Camera size={24} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[10px] font-bold mt-1">Take Photo</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Identity QR Code</label>
-                    <button onClick={generateQRPreview} className="w-full py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors mb-2">
-                      Generate Local QR
-                    </button>
-                    {qrPreview && (
-                      <img src={qrPreview} className="h-16 w-16 mx-auto border rounded-lg" alt="QR Preview" />
-                    )}
-                  </div>
-                </div>
               </div>
 
-              <div className="flex justify-end mt-8">
-                <button onClick={() => setStep(2)} className="btn-primary flex items-center gap-2">
-                  Next: Inventory Builder <ArrowRight size={18} />
+              {/* Next Button */}
+              <div className="flex justify-end pt-6">
+                <button
+                  onClick={() => setStep(2)}
+                  className="btn-primary flex items-center gap-2 px-8 py-3.5"
+                >
+                  Next: Inventory Builder
+                  <ArrowRight size={18} />
                 </button>
               </div>
             </div>
@@ -1273,9 +1339,10 @@ const VisitForm = () => {
           <div className="space-y-4 mb-8">
             {extinguishers.map((ext, index) => (
               <div key={index} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 hover:shadow-md transition-all relative group">
-                <div className="absolute -top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                {/* Action Buttons - Always visible on mobile, hover on desktop */}
+                <div className="absolute -top-3 right-4 z-20 flex items-center gap-2">
 
-                  {/* Save button - sirf unlocked hone pe */}
+                  {/* Save Button - only when unlocked */}
                   {!ext.isLocked && (
                     <button
                       onClick={() => {
@@ -1286,64 +1353,70 @@ const VisitForm = () => {
                         );
                       }}
                       disabled={!ext.hasChanges}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm transition-all min-w-[70px] justify-center ${ext.hasChanges
+                      className={`px-4 py-2 rounded-2xl text-xs font-medium flex items-center gap-1.5 shadow-sm transition-all ${ext.hasChanges
                         ? 'bg-green-600 hover:bg-green-700 text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                       title="Save changes and lock this unit"
                     >
-                      <Save size={14} />
+                      <Save size={15} />
                       Save
                     </button>
                   )}
 
-                  {/* Edit button - sirf locked hone pe */}
+                  {/* Edit / Unlock Button - only when locked */}
                   {ext.isLocked && (
                     <button
                       onClick={() => setExtinguishers(prev => prev.map((item, i) =>
                         i === index ? { ...item, isLocked: false } : item
                       ))}
-                      className="p-2 bg-white text-blue-600 rounded-lg shadow-sm border border-slate-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                      className="p-3 bg-white text-blue-600 rounded-2xl shadow-sm border border-slate-200 hover:bg-blue-50 hover:text-blue-700 transition-all"
                       title="Edit / Unlock this unit"
                     >
-                      <Pencil size={16} />
+                      <Pencil size={18} />
                     </button>
                   )}
 
-                  {/* Delete button - hamesha dikhega */}
+                  {/* Delete Button - always visible */}
                   <button
                     onClick={() => removeExtinguisher(index)}
-                    className="p-2 bg-white text-red-600 rounded-lg shadow-sm border border-slate-200 hover:bg-red-50 hover:text-red-700 transition-colors"
+                    className="p-3 bg-white text-red-600 rounded-2xl shadow-sm border border-slate-200 hover:bg-red-50 hover:text-red-700 transition-all"
                     title="Remove this unit"
                   >
-                    <Trash size={16} />
+                    <Trash size={18} />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2  mb-4 pb-4 border-b border-slate-200/50">
+                {/* Mode Selection Buttons - Fully Responsive */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 pb-5 border-b border-slate-200">
                   {['Validation', 'Refill', 'New Unit', 'Maintenance'].map((m) => (
                     <button
                       key={m}
                       type="button"
                       disabled={ext.isLocked}
                       onClick={() => handleExtinguisherChange(index, 'mode', m)}
-                      className={`w-full py-2 rounded-lg text-xs font-bold transition-all ${
-                        ext.mode === m 
-                          ? 'bg-primary-500 text-white shadow-md' 
-                          : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-50'
-                      } ${ext.isLocked ? 'cursor-not-allowed opacity-60' : ''}`}
+                      className={`py-3.5 px-3 rounded-2xl text-xs font-bold transition-all border ${ext.mode === m
+                        ? 'bg-primary-500 text-white shadow-md border-primary-500'
+                        : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+                        } ${ext.isLocked ? 'cursor-not-allowed opacity-60' : ''}`}
                     >
                       {m}
                     </button>
                   ))}
                 </div>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-4 pb-4'>
-                  {/* Type and Capacity sirf if mode != 'Maintenance' */}
+
+                {/* Type & Capacity Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pb-6">
                   {ext.mode !== 'Maintenance' && (
                     <>
                       <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Type</label>
-                        <select value={ext.type} onChange={(e) => handleExtinguisherChange(index, 'type', e.target.value)} disabled={ext.isLocked} className="input-field py-2 text-sm">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Type</label>
+                        <select
+                          value={ext.type}
+                          onChange={(e) => handleExtinguisherChange(index, 'type', e.target.value)}
+                          disabled={ext.isLocked}
+                          className="w-full p-3.5 rounded-2xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none text-sm"
+                        >
                           <option>ABC Dry Powder</option>
                           <option>CO2 - Carbon Dioxide</option>
                           <option>Water Type</option>
@@ -1351,25 +1424,35 @@ const VisitForm = () => {
                           <option>Wet Chemical</option>
                           <option>Other</option>
                         </select>
+
                         {ext.type === 'Other' && (
-                          <div className="mt-3 animate-fade-in">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-                              Specify Type
-                            </label>
+                          <div className="mt-3">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Specify Type</label>
                             <input
                               type="text"
                               value={ext.customType || ''}
                               onChange={(e) => handleExtinguisherChange(index, 'customType', e.target.value)}
-                              placeholder="e.g. Clean Agent, Dry Chemical Special, etc."
-                              className="input-field py-2 text-sm"
+                              placeholder="e.g. Clean Agent, Dry Chemical Special..."
+                              className="w-full p-3.5 rounded-2xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none text-sm"
                             />
                           </div>
                         )}
                       </div>
+
                       <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Capacity</label>
-                        <select value={ext.capacity} disabled={ext.isLocked} onChange={(e) => handleExtinguisherChange(index, 'capacity', e.target.value)} className="input-field py-2 text-sm">
-                          <option>1kg</option><option>2kg</option><option>4kg</option><option>6kg</option><option>9kg</option><option>25kg</option>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Capacity</label>
+                        <select
+                          value={ext.capacity}
+                          disabled={ext.isLocked}
+                          onChange={(e) => handleExtinguisherChange(index, 'capacity', e.target.value)}
+                          className="w-full p-3.5 rounded-2xl border border-slate-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none text-sm"
+                        >
+                          <option>1kg</option>
+                          <option>2kg</option>
+                          <option>4kg</option>
+                          <option>6kg</option>
+                          <option>9kg</option>
+                          <option>25kg</option>
                         </select>
                       </div>
                     </>
@@ -1895,48 +1978,48 @@ const VisitForm = () => {
                           </button>
                         </div>
                         {/* Partner (same as New Unit) */}
-                          <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-                              Partner
-                            </label>
-                            <select
-                              value={ext.partner || ''}
-                              onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)}
-                              className={`input-field py-2 text-sm ${ext.isLocked ? 'bg-slate-50 cursor-not-allowed opacity-60' : ''}`}
-                              disabled={loadingPartners || ext.isLocked}
-                            >
-                              <option value="">{loadingPartners ? 'Loading Partners...' : 'Select Partner'}</option>
-                              {partners.map(p => (
-                                <option key={p.id} value={p.id}>{p.business_name}</option>
-                              ))}
-                              <option value="Other">Other (Custom Partner)</option>
-                            </select>
-                            {ext.partner === 'Other' && (
-                              <div className="mt-3 animate-fade-in">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
-                                  Specify Partner Name
-                                </label>
-                                <input
-                                  type="text"
-                                  value={ext.customPartner || ''}
-                                  onChange={(e) => handleExtinguisherChange(index, 'customPartner', e.target.value)}
-                                  disabled={ext.isLocked}
-                                  placeholder="e.g. ABC Fire Refilling Co."
-                                  className={`input-field py-2 text-sm ${ext.isLocked ? 'bg-slate-50 cursor-not-allowed opacity-60' : ''}`}
-                                />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry Date</label>
-                            <input
-                              type="date"
-                              value={ext.expiryDate}
-                              onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)}
-                              disabled={ext.isLocked}
-                              className={`input-field py-2 text-sm ${ext.isLocked ? 'bg-slate-50 cursor-not-allowed opacity-60' : ''}`}
-                            />
-                          </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                            Partner
+                          </label>
+                          <select
+                            value={ext.partner || ''}
+                            onChange={(e) => handleExtinguisherChange(index, 'partner', e.target.value)}
+                            className={`input-field py-2 text-sm ${ext.isLocked ? 'bg-slate-50 cursor-not-allowed opacity-60' : ''}`}
+                            disabled={loadingPartners || ext.isLocked}
+                          >
+                            <option value="">{loadingPartners ? 'Loading Partners...' : 'Select Partner'}</option>
+                            {partners.map(p => (
+                              <option key={p.id} value={p.id}>{p.business_name}</option>
+                            ))}
+                            <option value="Other">Other (Custom Partner)</option>
+                          </select>
+                          {ext.partner === 'Other' && (
+                            <div className="mt-3 animate-fade-in">
+                              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                                Specify Partner Name
+                              </label>
+                              <input
+                                type="text"
+                                value={ext.customPartner || ''}
+                                onChange={(e) => handleExtinguisherChange(index, 'customPartner', e.target.value)}
+                                disabled={ext.isLocked}
+                                placeholder="e.g. ABC Fire Refilling Co."
+                                className={`input-field py-2 text-sm ${ext.isLocked ? 'bg-slate-50 cursor-not-allowed opacity-60' : ''}`}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Expiry Date</label>
+                          <input
+                            type="date"
+                            value={ext.expiryDate}
+                            onChange={(e) => handleExtinguisherChange(index, 'expiryDate', e.target.value)}
+                            disabled={ext.isLocked}
+                            className={`input-field py-2 text-sm ${ext.isLocked ? 'bg-slate-50 cursor-not-allowed opacity-60' : ''}`}
+                          />
+                        </div>
                         {ext.newUnits?.length > 0 && (
                           <div className="mt-6 space-y-4">
                             <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
@@ -2186,7 +2269,7 @@ const VisitForm = () => {
 
       {/* Step 3: Site Assessment */}
       {step === 3 && (
-        <div className="bg-white p-8 rounded-3xl shadow-soft border border-slate-100 animate-fade-in">
+        <div className="bg-white p-4 md:p-8 rounded-3xl shadow-soft border border-slate-100 animate-fade-in">
           <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
             <div className="p-2 bg-yellow-100 rounded-lg text-yellow-600"><AlertTriangle size={24} /></div>
             <div>

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../context/AuthContext";
 import PageLoader from "../../components/PageLoader";
-import { Settings, FileDown, Check, ChevronDown, Eye } from "lucide-react";
+import { Settings, FileDown, Check, ChevronDown, Eye, XCircle } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -72,48 +72,27 @@ const CategoryDetails = () => {
       const { data: items, error } =
         inquiryIds.length > 0
           ? await supabase
-              .from("inquiry_items")
-              .select(`
-                id,
-                inquiry_id,
-                serial_no,
-                type,
-                capacity,
-                quantity,
-                unit,
-                price,
-                install_date,
-                last_refill_date,
-                expiry_date,
-                condition,
-                status,
-                brand,
-                seller,
-                partner,
-                query_status,
-                system,
-                maintenance_notes,
-                maintenance_voice_url,
-                maintenance_unit_photo_url,
-                is_sub_unit,
-                created_at,
-                certificate_photo,
-                extinguisher_photo
+            .from("inquiry_items")
+            .select(`
+                id, inquiry_id, serial_no, type, capacity, quantity, unit, price,
+                install_date, last_refill_date, expiry_date, condition, status,
+                brand, seller, partner, query_status, system, maintenance_notes,
+                maintenance_voice_url, maintenance_unit_photo_url, is_sub_unit,
+                created_at, certificate_photo, extinguisher_photo
               `)
-              .in("inquiry_id", inquiryIds)
+            .in("inquiry_id", inquiryIds)
           : { data: [], error: null };
 
       if (!error) {
         const inquiryMap = new Map((inquiries || []).map((q) => [q.id, q]));
-        
-        // Group items by inquiry_id to consolidate them
+
         const consolidatedInquiries = {};
-        
+
         (items || []).forEach((it) => {
           if (!consolidatedInquiries[it.inquiry_id]) {
             const inquiryObj = inquiryMap.get(it.inquiry_id);
             consolidatedInquiries[it.inquiry_id] = {
-              id: it.inquiry_id, // unique ID for navigation
+              id: it.inquiry_id,
               inquiry_id: it.inquiry_id,
               inquiry_no: inquiryObj?.inquiry_no,
               created_at: inquiryObj?.created_at || it.created_at,
@@ -125,7 +104,7 @@ const CategoryDetails = () => {
               items_count: 0
             };
           }
-          
+
           const entry = consolidatedInquiries[it.inquiry_id];
           entry.quantity += Number(it.quantity || 0);
           entry.price += Number(it.price || 0) * Number(it.quantity || 1);
@@ -151,7 +130,6 @@ const CategoryDetails = () => {
 
       if (error) throw error;
 
-      // Update local state
       setData(prev => prev.map(item =>
         item.inquiry_id === inquiryId ? { ...item, inquiry_status: "closed" } : item
       ));
@@ -175,8 +153,6 @@ const CategoryDetails = () => {
 
   const handleExportPDF = () => {
     const doc = new jsPDF("landscape");
-
-    // Filter out columns that don't make sense in a PDF or are hidden
     const columnsToExport = ALL_COLUMNS.filter(col =>
       visibleColumns.includes(col.id) &&
       col.id !== 'media' &&
@@ -213,13 +189,10 @@ const CategoryDetails = () => {
 
   return (
     <div className="relative min-h-[400px] space-y-6">
-      {/* Back Link + Title */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link
-            to="/agent/performance"
-            className="text-sm text-blue-600 hover:underline"
-          >
+          <Link to="/agent/performance" className="text-sm text-blue-600 hover:underline">
             ← Back
           </Link>
           <div>
@@ -229,7 +202,7 @@ const CategoryDetails = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Column Visibility Filter */}
+          {/* Column Selector */}
           <div className="relative">
             <button
               onClick={() => setShowColumnDropdown(!showColumnDropdown)}
@@ -241,7 +214,7 @@ const CategoryDetails = () => {
             </button>
 
             {showColumnDropdown && (
-              <div className="absolute right-0 mt-2 w-56 max-h-[400px] overflow-y-auto bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-2 animate-in fade-in zoom-in duration-200">
+              <div className="absolute right-0 mt-2 w-56 max-h-[400px] overflow-y-auto bg-white border border-slate-100 rounded-2xl shadow-xl z-50 p-2">
                 <div className="px-3 py-2 border-b border-slate-50 mb-1">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show/Hide Columns</p>
                 </div>
@@ -249,7 +222,7 @@ const CategoryDetails = () => {
                   <button
                     key={col.id}
                     onClick={() => toggleColumn(col.id)}
-                    className="flex items-center justify-between w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-xl transition-colors group"
+                    className="flex items-center justify-between w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
                   >
                     <span>{col.label}</span>
                     {visibleColumns.includes(col.id) ? (
@@ -263,7 +236,7 @@ const CategoryDetails = () => {
             )}
           </div>
 
-          {/* Export PDF Button */}
+          {/* Export Button */}
           <button
             onClick={handleExportPDF}
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all shadow-md active:scale-95"
@@ -274,158 +247,205 @@ const CategoryDetails = () => {
         </div>
       </div>
 
-      {/* Loading / Empty State */}
       {loading && <PageLoader />}
-      {!loading && data.length === 0 ? (
-        <p className="text-center py-10">No records found</p>
-      ) : !loading && (
-        <div className="overflow-x-auto bg-white rounded-2xl shadow-soft border">
-          <table className="min-w-full text-sm divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr className="text-slate-600 uppercase text-[10px] tracking-wider font-bold">
-                {visibleColumns.includes('seq') && <th className="px-4 py-4 text-left">S.No</th>}
-                {visibleColumns.includes('created_at') && <th className="px-4 py-4 text-left">Created</th>}
-                {visibleColumns.includes('type') && <th className="px-4 py-4 text-left">Type</th>}
-                {visibleColumns.includes('capacity') && <th className="px-4 py-4 text-left">Capacity</th>}
-                {visibleColumns.includes('quantity') && <th className="px-4 py-4 text-left">Qty</th>}
-                {visibleColumns.includes('unit') && <th className="px-4 py-4 text-left">Unit</th>}
-                {visibleColumns.includes('price') && <th className="px-4 py-4 text-left">Price</th>}
-                {visibleColumns.includes('status') && <th className="px-4 py-4 text-left">Status</th>}
-                {visibleColumns.includes('condition') && <th className="px-4 py-4 text-left">Condition</th>}
-                {visibleColumns.includes('brand') && <th className="px-4 py-4 text-left">Brand</th>}
-                {visibleColumns.includes('seller') && <th className="px-4 py-4 text-left">Seller</th>}
-                {visibleColumns.includes('partner') && <th className="px-4 py-4 text-left">Partner</th>}
-                {visibleColumns.includes('system') && <th className="px-4 py-4 text-left">System</th>}
-                {visibleColumns.includes('install_date') && <th className="px-4 py-3 text-left">Install Date</th>}
-                {visibleColumns.includes('last_refill') && <th className="px-4 py-3 text-left">Last Refill</th>}
-                {visibleColumns.includes('expiry_date') && <th className="px-4 py-3 text-left">Expiry Date</th>}
-                {visibleColumns.includes('notes') && <th className="px-4 py-3 text-left">Notes</th>}
-                {visibleColumns.includes('media') && <th className="px-4 py-3 text-center">Media</th>}
-                {visibleColumns.includes('actions') && <th className="px-4 py-3 text-center text-slate-300">#</th>}
-              </tr>
-            </thead>
 
-            <tbody className="bg-white divide-y divide-slate-100">
-              {data.map((item, i) => (
-                <tr
-                  key={item.id}
-                  className={`transition hover:bg-blue-50 ${i % 2 === 0 ? "bg-white" : "bg-slate-50"
-                    }`}
-                >
-                  {visibleColumns.includes('seq') && (
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">#{item.inquiry_no || item.id}</td>
-                  )}
-                  {visibleColumns.includes('created_at') && (
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatDate(item.created_at)}</td>
-                  )}
-                  {visibleColumns.includes('type') && (
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-900">
-                      {item.type || item.system || "NA"}
-                    </td>
-                  )}
-                  {visibleColumns.includes('capacity') && (
-                    <td className="px-4 py-3 text-slate-600">{item.capacity || (item.system ? "System" : "NA")}</td>
-                  )}
-                  {visibleColumns.includes('quantity') && (
-                    <td className="px-4 py-3 text-slate-600">{item.quantity ?? "NA"}</td>
-                  )}
-                  {visibleColumns.includes('unit') && (
-                    <td className="px-4 py-3 text-slate-500">{item.unit || "Pieces"}</td>
-                  )}
-                  {visibleColumns.includes('price') && (
-                    <td className="px-4 py-3 font-bold text-green-700">
-                      {item.price !== null ? `SAR ${item.price}` : "NA"}
-                    </td>
-                  )}
-                  {visibleColumns.includes('status') && (
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.status === 'Valid' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-yellow-50 text-yellow-700 border border-yellow-100'}`}>
-                        {item.status || "NA"}
-                      </span>
-                    </td>
-                  )}
-                  {visibleColumns.includes('condition') && (
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.condition === 'Good' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-orange-50 text-orange-700 border border-orange-100'}`}>
-                        {item.condition || "NA"}
-                      </span>
-                    </td>
-                  )}
-                  {visibleColumns.includes('brand') && (
-                    <td className="px-4 py-3 text-slate-600">{item.brand || "NA"}</td>
-                  )}
-                  {visibleColumns.includes('seller') && (
-                    <td className="px-4 py-3 text-slate-600">{item.seller || "NA"}</td>
-                  )}
-                  {visibleColumns.includes('partner') && (
-                    <td className="px-4 py-3 text-slate-600">{item.partner || "NA"}</td>
-                  )}
-                  {visibleColumns.includes('system') && (
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-600">{item.system || "NA"}</td>
-                  )}
-                  {visibleColumns.includes('install_date') && (
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">{formatDate(item.install_date)}</td>
-                  )}
-                  {visibleColumns.includes('last_refill') && (
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">{formatDate(item.last_refill_date)}</td>
-                  )}
-                  {visibleColumns.includes('expiry_date') && (
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">{formatDate(item.expiry_date)}</td>
-                  )}
-                  {visibleColumns.includes('notes') && (
-                    <td className="px-4 py-3 max-w-[150px] truncate text-slate-400 italic text-xs" title={item.maintenance_notes}>
-                      {item.maintenance_notes || "--"}
-                    </td>
-                  )}
-                  {visibleColumns.includes('media') && (
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        {item.extinguisher_photo && (
-                          <a href={item.extinguisher_photo} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" title="Extinguisher Photo">🖼️</a>
-                        )}
-                        {item.maintenance_unit_photo_url && (
-                          <a href={item.maintenance_unit_photo_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors" title="Maintenance Photo">🛠️</a>
-                        )}
-                        {item.maintenance_voice_url && (
-                          <a href={item.maintenance_voice_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors" title="Voice Note">🎤</a>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                  {visibleColumns.includes('actions') && (
-                    <td className="px-4 py-3 text-center">
-                      {(item.inquiry_status || '').toLowerCase() !== 'closed' ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/agent/query/${item.inquiry_id}`);
-                            }}
-                            className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                            title="View Details"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCloseQuery(item.inquiry_id);
-                            }}
-                            className="px-3 py-1.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold text-[10px] uppercase tracking-wider whitespace-nowrap"
-                          >
-                            Close Query
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-slate-300 font-bold text-[10px] uppercase tracking-widest italic">Closed</span>
-                      )}
-                    </td>
-                  )}
+      {!loading && data.length === 0 ? (
+        <p className="text-center py-10 text-slate-500">No records found</p>
+      ) : !loading && (
+        <>
+          {/* ==================== DESKTOP TABLE ==================== */}
+          <div className="hidden md:block overflow-x-auto bg-white rounded-2xl shadow-soft border">
+            <table className="min-w-full text-sm divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr className="text-slate-600 uppercase text-[10px] tracking-wider font-bold">
+                  {visibleColumns.includes('seq') && <th className="px-4 py-4 text-left">S.No</th>}
+                  {visibleColumns.includes('created_at') && <th className="px-4 py-4 text-left">Created</th>}
+                  {visibleColumns.includes('type') && <th className="px-4 py-4 text-left">Type</th>}
+                  {visibleColumns.includes('capacity') && <th className="px-4 py-4 text-left">Capacity</th>}
+                  {visibleColumns.includes('quantity') && <th className="px-4 py-4 text-left">Qty</th>}
+                  {visibleColumns.includes('unit') && <th className="px-4 py-4 text-left">Unit</th>}
+                  {visibleColumns.includes('price') && <th className="px-4 py-4 text-left">Price</th>}
+                  {visibleColumns.includes('status') && <th className="px-4 py-4 text-left">Status</th>}
+                  {visibleColumns.includes('condition') && <th className="px-4 py-4 text-left">Condition</th>}
+                  {visibleColumns.includes('brand') && <th className="px-4 py-4 text-left">Brand</th>}
+                  {visibleColumns.includes('seller') && <th className="px-4 py-4 text-left">Seller</th>}
+                  {visibleColumns.includes('partner') && <th className="px-4 py-4 text-left">Partner</th>}
+                  {visibleColumns.includes('system') && <th className="px-4 py-4 text-left">System</th>}
+                  {visibleColumns.includes('install_date') && <th className="px-4 py-3 text-left">Install Date</th>}
+                  {visibleColumns.includes('last_refill') && <th className="px-4 py-3 text-left">Last Refill</th>}
+                  {visibleColumns.includes('expiry_date') && <th className="px-4 py-3 text-left">Expiry Date</th>}
+                  {visibleColumns.includes('notes') && <th className="px-4 py-3 text-left">Notes</th>}
+                  {visibleColumns.includes('media') && <th className="px-4 py-3 text-center">Media</th>}
+                  {visibleColumns.includes('actions') && <th className="px-4 py-3 text-center">#</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody className="bg-white divide-y divide-slate-100">
+                {data.map((item, i) => (
+                  <tr key={item.id} className={`transition hover:bg-blue-50 ${i % 2 === 0 ? "bg-white" : "bg-slate-50"}`}>
+                    {visibleColumns.includes('seq') && (
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500">#{item.inquiry_no || item.id}</td>
+                    )}
+                    {visibleColumns.includes('created_at') && (
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-600">{formatDate(item.created_at)}</td>
+                    )}
+                    {visibleColumns.includes('type') && (
+                      <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-900">
+                        {item.type || item.system || "NA"}
+                      </td>
+                    )}
+                    {visibleColumns.includes('capacity') && (
+                      <td className="px-4 py-3 text-slate-600">{item.capacity || (item.system ? "System" : "NA")}</td>
+                    )}
+                    {visibleColumns.includes('quantity') && (
+                      <td className="px-4 py-3 text-slate-600">{item.quantity ?? "NA"}</td>
+                    )}
+                    {visibleColumns.includes('unit') && (
+                      <td className="px-4 py-3 text-slate-500">{item.unit || "Pieces"}</td>
+                    )}
+                    {visibleColumns.includes('price') && (
+                      <td className="px-4 py-3 font-bold text-green-700">
+                        {item.price !== null ? `SAR ${item.price}` : "NA"}
+                      </td>
+                    )}
+                    {visibleColumns.includes('status') && (
+                      <td className="px-4 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${item.status === 'Valid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {item.status || "NA"}
+                        </span>
+                      </td>
+                    )}
+                    {visibleColumns.includes('condition') && (
+                      <td className="px-4 py-3">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${item.condition === 'Good' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                          {item.condition || "NA"}
+                        </span>
+                      </td>
+                    )}
+                    {visibleColumns.includes('brand') && <td className="px-4 py-3 text-slate-600">{item.brand || "NA"}</td>}
+                    {visibleColumns.includes('seller') && <td className="px-4 py-3 text-slate-600">{item.seller || "NA"}</td>}
+                    {visibleColumns.includes('partner') && <td className="px-4 py-3 text-slate-600">{item.partner || "NA"}</td>}
+                    {visibleColumns.includes('system') && <td className="px-4 py-3 text-slate-600">{item.system || "NA"}</td>}
+                    {visibleColumns.includes('install_date') && (
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">{formatDate(item.install_date)}</td>
+                    )}
+                    {visibleColumns.includes('last_refill') && (
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">{formatDate(item.last_refill_date)}</td>
+                    )}
+                    {visibleColumns.includes('expiry_date') && (
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-500 font-mono text-xs">{formatDate(item.expiry_date)}</td>
+                    )}
+                    {visibleColumns.includes('notes') && (
+                      <td className="px-4 py-3 max-w-[150px] truncate text-slate-400 italic text-xs" title={item.maintenance_notes}>
+                        {item.maintenance_notes || "--"}
+                      </td>
+                    )}
+                    {visibleColumns.includes('media') && (
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {item.extinguisher_photo && <a href={item.extinguisher_photo} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700">🖼️</a>}
+                          {item.maintenance_unit_photo_url && <a href={item.maintenance_unit_photo_url} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-700">🛠️</a>}
+                          {item.maintenance_voice_url && <a href={item.maintenance_voice_url} target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:text-pink-700">🎤</a>}
+                        </div>
+                      </td>
+                    )}
+                    {visibleColumns.includes('actions') && (
+                      <td className="px-4 py-3 text-center">
+                        {(item.inquiry_status || '').toLowerCase() !== 'closed' ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => navigate(`/agent/query/${item.inquiry_id}`)}
+                              className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
+                              title="View Details"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleCloseQuery(item.inquiry_id)}
+                              className="px-4 py-1.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 text-xs font-semibold"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-xs font-medium">Closed</span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ==================== MOBILE CARDS ==================== */}
+          <div className="block md:hidden space-y-4">
+            {data.map((item, index) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-3xl shadow-soft border border-slate-100 p-5 space-y-4"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs text-slate-500">Inquiry #{item.inquiry_no || item.id}</p>
+                    <p className="font-semibold text-lg text-slate-900 mt-1">
+                      {item.type || item.system || "N/A"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">Created</p>
+                    <p className="text-sm font-medium text-slate-600">{formatDate(item.created_at)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500 text-xs">Quantity</p>
+                    <p className="font-semibold text-slate-900">{item.quantity}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-slate-500 text-xs">Total Price</p>
+                    <p className="font-bold text-green-700">SAR {item.price}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {item.status && (
+                    <span className={`px-3 py-1 rounded-2xl text-xs font-semibold ${item.status === 'Valid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {item.status}
+                    </span>
+                  )}
+                  {item.condition && (
+                    <span className={`px-3 py-1 rounded-2xl text-xs font-semibold ${item.condition === 'Good' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                      {item.condition}
+                    </span>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="pt-3 border-t border-slate-100 flex gap-3">
+                  <button
+                    onClick={() => navigate(`/agent/query/${item.inquiry_id}`)}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl font-medium transition-colors"
+                  >
+                    <Eye size={18} />
+                    View Details
+                  </button>
+
+                  {(item.inquiry_status || '').toLowerCase() !== 'closed' && (
+                    <button
+                      onClick={() => handleCloseQuery(item.inquiry_id)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-2xl font-medium transition-colors"
+                    >
+                      <XCircle size={18} />
+                      Close Query
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

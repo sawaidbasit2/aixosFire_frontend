@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import {
     ArrowLeft,
@@ -53,7 +53,6 @@ const QueryDetail = () => {
 
                 if (itemsError) throw itemsError;
 
-                // Fetch Quotation (Cost Only for Agent)
                 const { data: quotationData } = await supabase
                     .from('quotations')
                     .select('estimated_cost, created_at')
@@ -72,29 +71,24 @@ const QueryDetail = () => {
 
                 setQuery(primaryQuery);
 
-                // Fetch Customer Details
                 if (inquiryData.customer_id) {
-                    const { data: customerData, error: customerError } = await supabase
+                    const { data: customerData } = await supabase
                         .from('customers')
                         .select('*')
                         .eq('id', inquiryData.customer_id)
                         .single();
 
-                    if (!customerError) {
-                        setCustomer(customerData);
-                    }
+                    if (customerData) setCustomer(customerData);
                 }
 
-                // Fetch Agent details (Assuming a 'profiles' or 'users' table exists)
-                // If agent_id is available, we'll try to get their details
                 if (inquiryData?.agent_id) {
-                    const { data: agentData, error: agentError } = await supabase
+                    const { data: agentData } = await supabase
                         .from('agents')
                         .select('name, email')
                         .eq('id', inquiryData.agent_id)
                         .single();
 
-                    if (!agentError) {
+                    if (agentData) {
                         primaryQuery.agent = agentData;
                         setQuery({ ...primaryQuery });
                     }
@@ -111,7 +105,8 @@ const QueryDetail = () => {
     }, [id]);
 
     const formatDate = (date) =>
-        date ? new Date(date).toLocaleDateString() : 'N/A';
+        date ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+
     const primaryItem = query?.inquiry_items?.[0] || null;
 
     if (loading) return <PageLoader message="Loading query details..." />;
@@ -122,240 +117,231 @@ const QueryDetail = () => {
         </div>
     );
 
-    console.log(query, "query");
-
     return (
-        <div className="mx-auto p-6 space-y-8">
+        <div className="mx-auto p-4 md:p-6 space-y-8 max-w-7xl">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate(-1)}
-                        className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
+                        className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all"
                     >
-                        <ArrowLeft size={20} />
+                        <ArrowLeft size={22} />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900">
+                        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
                             {query.inquiry_no || query.type || 'Query Details'}
                         </h1>
                         <p className="text-sm text-slate-500">
-                            ID: #{query.id} {query.serial_no ? `| Item #${query.serial_no}` : ''}
+                            ID: #{query.id}
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${(query.status || '').toLowerCase() === 'completed' || (query.status || '').toLowerCase() === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
+
+                <div className="flex flex-wrap gap-2">
+                    <span className={`px-4 py-1.5 rounded-2xl text-xs font-bold uppercase tracking-wider ${(query.status || '').toLowerCase() === 'completed' || (query.status || '').toLowerCase() === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                         {query.status || 'Pending'}
                     </span>
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${(primaryItem?.query_status || 'Active') === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                        }`}>
+                    <span className={`px-4 py-1.5 rounded-2xl text-xs font-bold uppercase tracking-wider ${(primaryItem?.query_status || 'Active') === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                         {primaryItem?.query_status || 'Active'}
                     </span>
                 </div>
             </div>
 
             {query.follow_up_date && (
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3 animate-fade-in shadow-sm">
-                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
                         <Calendar size={20} />
                     </div>
                     <div>
-                        <p className="text-[10px] text-blue-500 uppercase font-black tracking-widest leading-tight">Follow-up Scheduled</p>
-                        <p className="text-sm font-bold text-blue-900">{formatDate(query.follow_up_date)}</p>
+                        <p className="text-xs text-blue-500 uppercase font-bold tracking-widest">Follow-up Scheduled</p>
+                        <p className="font-semibold text-blue-900">{formatDate(query.follow_up_date)}</p>
                     </div>
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Main Info */}
-                <div className="md:col-span-2 space-y-8">
-                    {/* Items List */}
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-bold text-slate-900">Inquiry Items ({query.inquiry_items?.length || 0})</h2>
-                        {query.inquiry_items?.map((item) => (
-                            <section key={item.id} className="bg-white rounded-2xl border p-6 space-y-6">
-                                <div className="flex items-center justify-between border-b pb-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">
-                                            {item.serial_no}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Main Content */}
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Inquiry Items */}
+                    <div className="space-y-5">
+                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            Inquiry Items ({query.inquiry_items?.length || 0})
+                        </h2>
+
+                        {/* Desktop: Cards (already good) */}
+                        <div className="space-y-6 hidden md:block">
+                            {query.inquiry_items?.map((item) => (
+                                <section key={item.id} className="bg-white rounded-3xl border p-6 space-y-6">
+                                    <div className="flex items-center justify-between border-b pb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-bold">
+                                                {item.serial_no}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-lg text-slate-900">{item.system_type || item.type || 'Equipment'}</h3>
+                                                {item.system_type && <p className="text-xs text-slate-500">{item.type}</p>}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h2 className="font-bold text-slate-900">{item.system_type || item.type || 'Standard Equipment'}</h2>
-                                            {item.system_type && <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">{item.type}</p>}
+                                        <span className={`px-4 py-1 rounded-2xl text-xs font-bold ${item.status === 'New' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {item.status || 'N/A'}
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                        <DetailItem icon={<Scale />} label="Capacity" value={item.capacity} />
+                                        <DetailItem icon={<Box />} label="Quantity" value={`${item.quantity} ${item.unit || 'pcs'}`} />
+                                        <DetailItem icon={<DollarSign />} label="Price" value={item.price ? `SAR ${item.price}` : 'N/A'} />
+                                        <DetailItem icon={<ShieldCheck />} label="Catalog No" value={item.catalog_no} />
+                                        <DetailItem icon={<Activity />} label="Condition" value={item.condition} />
+                                        <DetailItem icon={<FileText />} label="System" value={item.system} />
+                                    </div>
+
+                                    {item.maintenance_notes && (
+                                        <div className="p-5 bg-slate-50 rounded-2xl border-l-4 border-slate-300">
+                                            <p className="text-xs uppercase font-bold text-slate-400 mb-2">Maintenance Notes</p>
+                                            <p className="text-slate-600">{item.maintenance_notes}</p>
                                         </div>
+                                    )}
+
+                                    {/* {(item.maintenance_unit_photo_url || item.maintenance_voice_url) && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
+                                            {item.maintenance_unit_photo_url && <MediaItem title="Item Photo" url={item.maintenance_unit_photo_url} type="image" />}
+                                            {item.maintenance_voice_url && <MediaItem title="Voice Note" url={item.maintenance_voice_url} type="audio" />}
+                                        </div>
+                                    )} */}
+                                </section>
+                            ))}
+                        </div>
+
+                        {/* Mobile: Compact Cards */}
+                        <div className="block md:hidden space-y-5">
+                            {query.inquiry_items?.map((item) => (
+                                <div key={item.id} className="bg-white rounded-3xl border p-6 space-y-5">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center font-bold text-sm">
+                                                {item.serial_no}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-slate-900">{item.system_type || item.type}</p>
+                                                <p className="text-xs text-slate-500">{item.status}</p>
+                                            </div>
+                                        </div>
+                                        <span className="px-3 py-1 text-xs font-bold bg-emerald-100 text-emerald-700 rounded-2xl">
+                                            {item.quantity} {item.unit || 'pcs'}
+                                        </span>
                                     </div>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${item.status === 'New' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                                        }`}>
-                                        {item.status}
-                                    </span>
+
+                                    <div className="grid grid-cols-2 gap-y-5 text-sm">
+                                        <DetailItem icon={<Scale />} label="Capacity" value={item.capacity} />
+                                        <DetailItem icon={<DollarSign />} label="Price" value={item.price ? `SAR ${item.price}` : 'N/A'} />
+                                        <DetailItem icon={<Activity />} label="Condition" value={item.condition} />
+                                        <DetailItem icon={<ShieldCheck />} label="Catalog" value={item.catalog_no} />
+                                    </div>
+
+                                    {item.maintenance_notes && (
+                                        <div className="pt-4 border-t">
+                                            <p className="text-xs font-bold text-slate-400 mb-1">NOTES</p>
+                                            <p className="text-sm text-slate-600">{item.maintenance_notes}</p>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                    <DetailItem icon={<Scale />} label="Capacity" value={item.capacity} />
-                                    <DetailItem icon={<Box />} label="Quantity" value={`${item.quantity} ${item.unit || 'Pieces'}`} />
-                                    <DetailItem icon={<DollarSign />} label="Price" value={item.price ? `SAR ${item.price}` : 'N/A'} />
-                                    <DetailItem icon={<ShieldCheck />} label="Catalog No" value={item.catalog_no} />
-                                    <DetailItem icon={<Activity />} label="Condition" value={item.condition} />
-                                    <DetailItem icon={<FileText />} label="System" value={item.system} />
-                                </div>
-                                {item.maintenance_notes && (
-                                    <div className="p-4 bg-slate-50 rounded-xl border-l-4 border-slate-300">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Notes</p>
-                                        <p className="text-sm text-slate-600 leading-relaxed">{item.maintenance_notes}</p>
-                                    </div>
-                                )}
-                                {(item.maintenance_unit_photo_url || item.maintenance_voice_url) && (
-                                    <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
-                                        {item.maintenance_unit_photo_url && (
-                                            <MediaItem title="Item Photo" url={item.maintenance_unit_photo_url} type="image" />
-                                        )}
-                                        {item.maintenance_voice_url && (
-                                            <MediaItem title="Voice Note" url={item.maintenance_voice_url} type="audio" />
-                                        )}
-                                    </div>
-                                )}
-                            </section>
-                        ))}
+                            ))}
+                        </div>
                     </div>
 
-                    {/* Maintenance Records */}
-                    {query.status === "Valid" && query.status !== "Refilled" && (
-                        <section className="bg-white rounded-2xl border p-6 space-y-6">
-                            <div className="flex items-center gap-2 border-b pb-4">
-                                <FileText className="text-purple-600" size={20} />
-                                <h2 className="font-bold text-slate-900">Maintenance Details</h2>
-                            </div>
-                            <div className="grid grid-cols-2 gap-6">
+                    {/* Maintenance & Media Sections (keep as is, they are already responsive) */}
+                    {query.status === "Valid" && (
+                        <section className="bg-white rounded-3xl border p-6 space-y-6">
+                            <h2 className="font-bold text-slate-900 flex items-center gap-2">
+                                <FileText className="text-purple-600" size={20} /> Maintenance Details
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <DetailItem label="System" value={primaryItem?.system} />
                                 <DetailItem label="Install Date" value={formatDate(primaryItem?.install_date)} />
                                 <DetailItem label="Last Refill" value={formatDate(primaryItem?.last_refill_date)} />
                                 <DetailItem label="Expiry Date" value={formatDate(primaryItem?.expiry_date)} />
                             </div>
-                            {primaryItem?.maintenance_notes && (
-                                <div className="p-4 bg-slate-50 rounded-xl border-l-4 border-slate-300">
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Notes</p>
-                                    <p className="text-sm text-slate-600 leading-relaxed">{primaryItem.maintenance_notes}</p>
-                                </div>
-                            )}
                         </section>
                     )}
 
-                    {/* Media Section */}
+                    {/* Attached Media */}
                     {(primaryItem?.extinguisher_photo || primaryItem?.maintenance_unit_photo_url || primaryItem?.maintenance_voice_url) && (
-                        <section className="bg-white rounded-2xl border p-6 space-y-6">
+                        <section className="bg-white rounded-3xl border p-6 space-y-6">
                             <h2 className="font-bold text-slate-900">Attached Media</h2>
-                            <div className="grid grid-cols-2 gap-4">
-                                {primaryItem?.extinguisher_photo && (
-                                    <MediaItem title="Equipment Photo" url={primaryItem.extinguisher_photo} type="image" />
-                                )}
-                                {primaryItem?.maintenance_unit_photo_url && (
-                                    <MediaItem title="Maintenance Photo" url={primaryItem.maintenance_unit_photo_url} type="image" />
-                                )}
-                                {primaryItem?.maintenance_voice_url && (
-                                    <MediaItem title="Voice Note" url={primaryItem.maintenance_voice_url} type="audio" />
-                                )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {primaryItem?.extinguisher_photo && <MediaItem title="Equipment Photo" url={primaryItem.extinguisher_photo} type="image" />}
+                                {primaryItem?.maintenance_unit_photo_url && <MediaItem title="Maintenance Photo" url={primaryItem.maintenance_unit_photo_url} type="image" />}
+                                {primaryItem?.maintenance_voice_url && <MediaItem title="Voice Note" url={primaryItem.maintenance_voice_url} type="audio" />}
                             </div>
                         </section>
                     )}
                 </div>
 
-                {/* Sidebar Info */}
+                {/* Sidebar */}
                 <div className="space-y-8">
-                    {/* Customer Information */}
-                    <section className="bg-white rounded-2xl border p-6 space-y-6 relative overflow-hidden">
-                        <div className="relative z-10 space-y-6">
-                            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
-                                <Building2 className="text-blue-400" size={20} />
-                                <h2 className="font-bold">Customer Info</h2>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Customer Name</p>
-                                    <p className="font-bold text-lg">{customer?.business_name || 'System Customer'}</p>
-                                </div>
-
-                                <div>
-                                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Customer Email</p>
-                                    <button
-                                        onClick={() => navigate(`/agent/customer/${query.customer_id}`)}
-                                        className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors font-medium group"
-                                    >
-                                        <Mail size={16} />
-                                        <span className="underline decoration-blue-800 underline-offset-4">{customer?.email || 'customer@aixos.com'}</span>
-                                        <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </button>
-                                </div>
-
-                                {query.agent?.name && (
-                                    <div className="pt-4 border-t border-white/5">
-                                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Generated By Agent</p>
-                                        <div className="flex items-center gap-2 text-slate-300">
-                                            <User size={14} className="text-slate-500" />
-                                            <span className="text-sm font-medium">{query.agent.name}</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {query.visits?.visit_date && (
-                                    <div>
-                                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">Visit Date</p>
-                                        <div className="flex items-center gap-2 text-slate-300">
-                                            <Calendar size={14} className="text-slate-500" />
-                                            <span className="text-sm font-medium">{formatDate(query.visits.visit_date)}</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                    {/* Customer Info */}
+                    <section className="bg-white rounded-3xl border p-6 space-y-6">
+                        <div className="flex items-center gap-2 border-b pb-4">
+                            <Building2 className="text-blue-500" size={20} />
+                            <h2 className="font-bold">Customer Information</h2>
                         </div>
-                        {/* Visual Decoration */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16"></ div>
+
+                        <div className="space-y-5">
+                            <div>
+                                <p className="text-xs text-slate-500">Customer Name</p>
+                                <p className="font-semibold text-lg">{customer?.business_name || 'N/A'}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-xs text-slate-500">Email</p>
+                                <button
+                                    onClick={() => navigate(`/agent/customer/${query.customer_id}`)}
+                                    className="text-blue-600 hover:underline flex items-center gap-1"
+                                >
+                                    <Mail size={16} />
+                                    {customer?.email || 'N/A'}
+                                </button>
+                            </div>
+
+                            {query.visits?.visit_date && (
+                                <div>
+                                    <p className="text-xs text-slate-500">Visit Date</p>
+                                    <p className="font-medium">{formatDate(query.visits.visit_date)}</p>
+                                </div>
+                            )}
+                        </div>
                     </section>
 
-                    {/* Quotation Section (Agent: Cost Only) */}
+                    {/* Quotation */}
                     {quotation && (
-                        <section className="bg-white rounded-2xl border p-6 space-y-6 relative overflow-hidden group hover:border-emerald-200 transition-all">
-                            <div className="flex items-center gap-2 border-b border-slate-50 pb-4">
+                        <section className="bg-white rounded-3xl border p-6 space-y-6">
+                            <div className="flex items-center gap-2">
                                 <DollarSign className="text-emerald-500" size={20} />
-                                <h2 className="font-bold text-slate-900 border-none inline-block">Partner Quotation</h2>
+                                <h2 className="font-bold">Partner Quotation</h2>
                             </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Estimated Cost</p>
-                                    <p className="text-2xl font-black text-slate-900 tracking-tight">
-                                        {quotation.estimated_cost ? `SAR ${quotation.estimated_cost}` : '—'}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Submitted on</p>
-                                    <p className="text-sm font-medium text-slate-600">
-                                        {formatDate(quotation.created_at)}
-                                    </p>
-                                </div>
-                                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-2">
-                                    <Info className="text-amber-500 shrink-0 mt-0.5" size={14} />
-                                    <p className="text-[10px] text-amber-800 leading-relaxed font-bold">
-                                        Agent Access Restricted: Only the estimated cost is visible. PDF quotation is reserved for Customer review.
-                                    </p>
-                                </div>
+                            <div>
+                                <p className="text-xs text-slate-500">Estimated Cost</p>
+                                <p className="text-3xl font-bold text-slate-900">
+                                    {quotation.estimated_cost ? `SAR ${quotation.estimated_cost}` : '—'}
+                                </p>
                             </div>
+                            <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-2xl">
+                                Only estimated cost visible to agent.
+                            </p>
                         </section>
                     )}
 
-                    {/* Quick Support */}
-                    <section className="bg-white rounded-2xl border p-6 text-center space-y-4">
-                        <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <Info size={24} />
-                        </div>
-                        <h3 className="font-bold text-slate-900 leading-tight">Need assistance with this query?</h3>
-                        <p className="text-xs text-slate-500">Contact our support center or view related customer history.</p>
+                    {/* Quick Actions */}
+                    <section className="bg-white rounded-3xl border p-6 text-center space-y-4">
+                        <h3 className="font-bold">Need Help?</h3>
                         <button
                             onClick={() => navigate(`/agent/customer/${query.customer_id}`)}
-                            className="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 group"
+                            className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-medium hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
                         >
-                            <span>Back to Customer</span>
-                            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                            Back to Customer Profile
+                            <ArrowRight size={18} />
                         </button>
                     </section>
                 </div>
@@ -364,28 +350,26 @@ const QueryDetail = () => {
     );
 };
 
+/* Reusable Components */
 const DetailItem = ({ icon, label, value }) => (
     <div className="flex gap-3">
-        {icon && <div className="text-slate-400">{icon}</div>}
+        {icon && <div className="text-slate-400 mt-0.5">{icon}</div>}
         <div>
-            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{label}</p>
-            <p className="text-sm font-semibold text-slate-700">{value || 'N/A'}</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">{label}</p>
+            <p className="font-semibold text-slate-800">{value || 'N/A'}</p>
         </div>
     </div>
 );
 
 const MediaItem = ({ title, url, type }) => (
-    <div className="group space-y-2">
-        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{title}</p>
+    <div className="space-y-2">
+        <p className="text-xs uppercase font-bold text-slate-500 tracking-wider">{title}</p>
         {type === 'image' ? (
-            <a href={url} target="_blank" rel="noopener noreferrer" className="block relative aspect-video rounded-xl border overflow-hidden">
-                <img src={url} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <ChevronRight className="text-white" size={24} />
-                </div>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="block rounded-2xl overflow-hidden border aspect-video">
+                <img src={url} alt={title} className="w-full h-full object-cover hover:scale-105 transition-transform" />
             </a>
         ) : (
-            <audio controls className="w-full h-10 rounded shadow-sm">
+            <audio controls className="w-full rounded-2xl">
                 <source src={url} type="audio/mpeg" />
             </audio>
         )}
