@@ -21,12 +21,14 @@ const PartnerInspectionReportModal = ({ isOpen, onClose, inquiryId, inquiryNo, o
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const allowed = [
-                'application/pdf',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            ];
-            if (!allowed.includes(file.type)) {
-                setFileError('Only PDF and Excel (.xlsx) files are allowed.');
+            const isPDF = file.type === 'application/pdf';
+            const maxSize = 100 * 1024 * 1024; // 100MB
+
+            if (!isPDF) {
+                setFileError('Only PDF files are allowed.');
+                setFormData({ ...formData, file: null });
+            } else if (file.size > maxSize) {
+                setFileError('File size must be less than 100MB');
                 setFormData({ ...formData, file: null });
             } else {
                 setFileError('');
@@ -139,7 +141,7 @@ const PartnerInspectionReportModal = ({ isOpen, onClose, inquiryId, inquiryNo, o
 
                     <div>
                         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
-                            Upload file (PDF or Excel)
+                            Upload file (PDF ONLY)
                         </label>
                         <div
                             className={`group relative border-2 border-dashed rounded-2xl p-8 transition-all cursor-pointer text-center ${
@@ -169,14 +171,14 @@ const PartnerInspectionReportModal = ({ isOpen, onClose, inquiryId, inquiryNo, o
                                     />
                                     <p className="text-sm font-bold text-slate-600 group-hover:text-primary-600">Click to upload</p>
                                     <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">
-                                        Supported: PDF, XLSX
+                                        Supported: PDF (Max 100MB)
                                     </p>
                                 </>
                             )}
                             <input
                                 type="file"
                                 className="absolute inset-0 opacity-0 cursor-pointer"
-                                accept=".pdf,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                accept=".pdf,application/pdf"
                                 onChange={handleFileChange}
                             />
                         </div>
@@ -195,8 +197,8 @@ const PartnerInspectionReportModal = ({ isOpen, onClose, inquiryId, inquiryNo, o
                         </button>
                         <button
                             type="submit"
-                            disabled={isUploading}
-                            className="inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white font-black py-4 px-8 rounded-2xl text-sm uppercase tracking-widest shadow-lg shadow-primary-500/20 transition-all disabled:opacity-50"
+                            disabled={isUploading || !!fileError || !formData.file}
+                            className="inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white font-black py-4 px-8 rounded-2xl text-sm uppercase tracking-widest shadow-lg shadow-primary-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isUploading ? (
                                 <>

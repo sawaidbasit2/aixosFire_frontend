@@ -74,8 +74,25 @@ const DetailField = ({ label, value, className = '' }) => (
     </div>
 );
 
-const MediaLink = ({ href, label, icon: Icon }) => {
+const MediaLink = ({ href, label, icon: Icon, isAudio = false }) => {
     if (!href) return null;
+    if (isAudio) {
+        return (
+            <div className="flex flex-col gap-2 min-w-[200px]">
+                <span className="flex items-center gap-2 text-slate-700 font-bold text-xs uppercase tracking-wider">
+                    <Icon size={14} className="text-primary-500" />
+                    {label}
+                </span>
+                <audio
+                    controls
+                    src={href}
+                    className="h-8 w-full custom-audio-player"
+                >
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+        );
+    }
     return (
         <a
             href={href}
@@ -518,7 +535,7 @@ const InquiryItemDetailPage = () => {
                             <MediaLink href={item.certificate_photo} label="Certificate photo" icon={ImageIcon} />
                             <MediaLink href={item.extinguisher_photo} label="Extinguisher photo" icon={ImageIcon} />
                             <MediaLink href={item.maintenance_unit_photo_url} label="Maintenance unit photo" icon={ImageIcon} />
-                            <MediaLink href={item.maintenance_voice_url} label="Voice note" icon={Mic} />
+                            <MediaLink href={item.maintenance_voice_url} label="Voice note" icon={Mic} isAudio={true} />
                             {!item.certificate_photo &&
                                 !item.extinguisher_photo &&
                                 !item.maintenance_unit_photo_url &&
@@ -528,41 +545,7 @@ const InquiryItemDetailPage = () => {
                         </div>
                     </div>
 
-                    {/* Linked services */}
-                    <div className="border-t border-slate-100 pt-10">
-                        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Link2 size={16} />
-                            Inquiry item services
-                        </h2>
-                        {itemServices.length === 0 ? (
-                            <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                                No linked services on this line item.
-                            </p>
-                        ) : (
-                            <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        <tr>
-                                            <th className="px-4 py-3">Service</th>
-                                            <th className="px-4 py-3">Details</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {itemServices.map((s, i) => (
-                                            <tr key={s.id ?? i}>
-                                                <td className="px-4 py-3 font-medium text-slate-900">{formatVal(s.name || s.service_type || s.id)}</td>
-                                                <td className="px-4 py-3 text-slate-600">
-                                                    <pre className="text-xs whitespace-pre-wrap font-sans">
-                                                        {JSON.stringify(s, null, 2)}
-                                                    </pre>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+
 
                     {isMaintenanceInquiry && isInquiryAccepted && (
                         <div className="border-t border-slate-100 pt-10">
