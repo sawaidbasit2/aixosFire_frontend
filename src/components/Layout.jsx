@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield, Bookmark, FireExtinguisher, Clock } from 'lucide-react';
+import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield, Bookmark, FireExtinguisher, Clock, Menu, X } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useLocationTracker from '../hooks/useLocationTracker';
 import NotificationBell from './NotificationBell';
@@ -19,6 +19,7 @@ const Layout = ({ children }) => {
     const location = useLocation();
     const [isChatOpen, setIsChatOpen] = React.useState(false);
     const [selectedQueryId, setSelectedQueryId] = React.useState(null);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     // Active Location Tracking
     useLocationTracker();
@@ -69,7 +70,71 @@ const Layout = ({ children }) => {
 
     return (
         <div className="flex h-screen bg-slate-50 font-sans">
-            {/* Sidebar */}
+            {/* Mobile Sidebar Overlay */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Mobile Sidebar Drawer */}
+            <div className={`fixed inset-y-0 left-0 w-72 bg-slate-900 z-50 md:hidden transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl"></div>
+                
+                <div className="p-6 relative z-10 flex justify-between items-center border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-primary-500 rounded-lg shadow-lg shadow-primary-500/20">
+                            <Shield size={20} className="text-white" />
+                        </div>
+                        <h1 className="text-xl font-display font-extrabold text-white tracking-tight">
+                            AiXOS Red<span className="text-primary-500">.</span>
+                        </h1>
+                    </div>
+                    <button 
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="p-2 text-slate-400 hover:text-white transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <nav className="flex-1 px-4 space-y-1.5 pt-6 overflow-y-auto">
+                    <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Main Menu</p>
+                    {getNavItems().map((item, idx) => (
+                        <div key={idx} onClick={() => setIsMobileMenuOpen(false)}>
+                            <SidebarItem
+                                {...item}
+                                active={location.pathname === item.to}
+                            />
+                        </div>
+                    ))}
+                </nav>
+
+                <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+                    <div className="flex items-center gap-3 mb-4 px-3 p-2 bg-slate-800 rounded-xl border border-slate-700/50">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-red-600 flex items-center justify-center text-white text-xs font-bold">
+                            {user?.name?.[0] || 'U'}
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="text-xs font-bold text-white truncate">{user?.name}</p>
+                            <p className="text-[10px] text-slate-400 capitalize">{user?.role}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            handleLogout();
+                            setIsMobileMenuOpen(false);
+                        }}
+                        className="flex items-center justify-center space-x-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 px-4 py-2.5 rounded-xl w-full transition-all duration-200 text-xs font-medium"
+                    >
+                        <LogOut size={16} />
+                        <span>Sign Out</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Desktop Sidebar (unchanged visually but kept separate from drawer for cleaner structure) */}
             <div className="w-72 bg-slate-900 border-r border-slate-800 shadow-xl hidden md:flex flex-col relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/10 rounded-full blur-3xl"></div>
 
@@ -120,11 +185,19 @@ const Layout = ({ children }) => {
                 <div className="absolute top-0 left-0 w-full h-64 bg-slate-100 z-0"></div>
 
                 <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 p-4 md:px-8 flex justify-between items-center z-30 sticky top-0">
-                    <div className="flex items-center gap-2 md:hidden">
-                        <div className="p-1.5 bg-primary-500 rounded-lg">
-                            <Shield size={18} className="text-white" />
+                    <div className="flex items-center gap-3 md:hidden">
+                        <button 
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                            <Menu size={24} />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <div className="p-1 bg-primary-500 rounded-md">
+                                <Shield size={16} className="text-white" />
+                            </div>
+                            <h1 className="text-base font-bold text-slate-900">AiXOS Red</h1>
                         </div>
-                        <h1 className="text-lg font-bold text-slate-900">AiXOS Red</h1>
                     </div>
                     <div className="hidden md:block">
                         <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{location.pathname.split('/').pop().replace('-', ' ')}</h2>
