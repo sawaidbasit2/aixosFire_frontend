@@ -1308,6 +1308,7 @@ const VisitForm = () => {
                     <input
                       type="file"
                       accept="image/*"
+                      capture="environment"
                       onChange={handlePhotoUpload}
                       id="customer-photo-upload"
                       className="hidden"
