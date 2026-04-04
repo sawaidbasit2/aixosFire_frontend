@@ -169,7 +169,8 @@ const VisitForm = () => {
       isLocked: false,
       hasChanges: false,
       newUnits: [],
-      customMaterial: ''
+      customMaterial: '',
+      validationPhoto: null
     }
   ]);
 
@@ -459,7 +460,8 @@ const VisitForm = () => {
       hasChanges: false,
       newUnits: [],
       customMaterial: '',
-      customFirefightingSystem: ''
+      customFirefightingSystem: '',
+      validationPhoto: null
     }]);
   };
 
@@ -717,6 +719,49 @@ const VisitForm = () => {
     }
   };
 
+  const uploadPhotoReference = async (file, index) => {
+    if (!file) return null;
+    try {
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `ref-${Date.now()}-${index}.${fileExt}`;
+      const filePath = `references/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('photo-references')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Photo reference upload error:', uploadError);
+        // Fallback to existing bucket if new one isn't ready
+        const { error: fallbackError } = await supabase.storage
+          .from('visit-unit-photos')
+          .upload(filePath, file);
+        
+        if (fallbackError) {
+          alert('Photo reference upload failed: ' + uploadError.message);
+          return null;
+        }
+        
+        const { data: fallbackUrl } = supabase.storage
+          .from('visit-unit-photos')
+          .getPublicUrl(filePath);
+        return fallbackUrl?.publicUrl || null;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('photo-references')
+        .getPublicUrl(filePath);
+
+      return urlData?.publicUrl || null;
+    } catch (err) {
+      console.error('Reference photo upload failed:', err);
+      return null;
+    }
+  };
+
   const uploadSiteVoice = async (blob, visitId) => {
     if (!blob) return null;
 
@@ -883,6 +928,8 @@ const VisitForm = () => {
 
           let voiceUrl = null;
           let photoUrl = null;
+          let refPhotoUrl = null;
+
           if (item.mode === 'Maintenance') {
             if (item.maintenanceVoiceNote) {
               voiceUrl = await uploadMaintenanceVoice(item.maintenanceVoiceNote, idx);
@@ -890,6 +937,10 @@ const VisitForm = () => {
             if (item.maintenanceUnitPhoto) {
               photoUrl = await uploadMaintenancePhoto(item.maintenanceUnitPhoto, idx);
             }
+          }
+
+          if (item.mode === 'Validation' && item.validationPhoto) {
+            refPhotoUrl = await uploadPhotoReference(item.validationPhoto, idx);
           }
 
           // 1. Map the Main Unit of this block
@@ -908,6 +959,7 @@ const VisitForm = () => {
               maintenance_notes: item.maintenanceNotes || null,
               maintenance_voice_url: voiceUrl,
               maintenance_unit_photo_url: photoUrl,
+              extinguisher_photo: refPhotoUrl,
               expiry_date: item.expiryDate || null,
               follow_up_date: formData.followUpDate || null,
               performed_by: formData.performedBy || 'Agent',
@@ -936,6 +988,7 @@ const VisitForm = () => {
                 maintenance_notes: item.maintenanceNotes || null,
                 maintenance_voice_url: voiceUrl,
                 maintenance_unit_photo_url: photoUrl,
+                extinguisher_photo: refPhotoUrl,
                 expiry_date: item.expiryDate || null,
                 follow_up_date: formData.followUpDate || null,
                 performed_by: formData.performedBy || 'Agent',
@@ -1251,40 +1304,40 @@ const VisitForm = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Customer Image (office / building)
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Upload File */}
-                    <div className="border-2 border-dashed border-slate-300 rounded-2xl p-6 flex flex-col items-center justify-center hover:border-primary-400 transition-all cursor-pointer relative">
-                      <input
-                        type="file"
-                        onChange={handlePhotoUpload}
-                        accept="image/*"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
+                  <div className="relative group">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      id="customer-photo-upload"
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="customer-photo-upload"
+                      className="flex flex-col items-center justify-center w-full min-h-[140px] border-2 border-dashed rounded-2xl transition-all bg-white border-slate-300 hover:border-primary-500 hover:bg-primary-50/10 cursor-pointer"
+                    >
                       {formData.customerPhoto ? (
-                        <img
-                          src={URL.createObjectURL(formData.customerPhoto)}
-                          className="h-20 w-20 object-cover rounded-xl"
-                          alt="Preview"
-                        />
+                        <div className="relative w-full p-4 flex flex-col items-center animate-fade-in">
+                          <img
+                            src={URL.createObjectURL(formData.customerPhoto)}
+                            className="h-28 w-28 object-cover rounded-xl shadow-md border-2 border-white mb-3"
+                            alt="Preview"
+                          />
+                          <div className="flex items-center gap-2 text-sm font-bold text-primary-600 uppercase tracking-wider">
+                            <Camera size={16} />
+                            Change Photo
+                          </div>
+                        </div>
                       ) : (
-                        <div className="text-center">
-                          <Image className="mx-auto text-slate-400" size={28} />
-                          <p className="text-xs font-medium text-slate-500 mt-2">Upload Image</p>
+                        <div className="flex flex-col items-center p-6 text-center animate-fade-in">
+                          <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <Camera size={28} className="text-slate-400 group-hover:text-primary-500" />
+                          </div>
+                          <p className="text-base font-bold text-slate-700 mb-1">Add Customer Photo</p>
+                          <p className="text-sm text-slate-500">Take a photo or upload from gallery</p>
                         </div>
                       )}
-                    </div>
-
-                    {/* Take Photo */}
-                    <button
-                      onClick={() => {
-                        setCameraTarget('customer');
-                        setIsCameraOpen(true);
-                      }}
-                      className="border-2 border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center hover:border-primary-400 hover:bg-primary-50/10 transition-all"
-                    >
-                      <Camera size={28} className="text-slate-500" />
-                      <p className="text-xs font-medium text-slate-500 mt-2">Take Photo</p>
-                    </button>
+                    </label>
                   </div>
                 </div>
 
@@ -1478,9 +1531,52 @@ const VisitForm = () => {
                         </select>
                       </div>
 
-                      <div className="md:col-span-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Photo Reference</label>
-                        <div className="border border-dashed border-slate-300 rounded-lg h-[38px] flex items-center justify-center text-slate-400 text-xs hover:bg-white cursor-pointer"><Image size={14} className="mr-2" /> Upload Snapshot</div>
+                      <div className="md:col-span-3">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Photo Reference</label>
+                        <div className="relative group">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={ext.isLocked}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleExtinguisherChange(index, 'validationPhoto', file);
+                              }
+                            }}
+                            id={`validation-photo-${index}`}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor={`validation-photo-${index}`}
+                            className={`flex flex-col items-center justify-center w-full min-h-[120px] border-2 border-dashed rounded-2xl transition-all ${ext.isLocked
+                              ? 'bg-slate-50 border-slate-200 cursor-not-allowed'
+                              : 'bg-white border-slate-300 hover:border-primary-500 hover:bg-primary-50/10 cursor-pointer'
+                              }`}
+                          >
+                            {ext.validationPhoto ? (
+                              <div className="relative w-full p-2 flex flex-col items-center animate-fade-in">
+                                <img
+                                  src={URL.createObjectURL(ext.validationPhoto)}
+                                  className="h-24 w-24 object-cover rounded-xl shadow-md border-2 border-white mb-2"
+                                  alt="Preview"
+                                />
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-primary-600 uppercase tracking-wider">
+                                  <Camera size={14} />
+                                  Change Photo
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center p-6 text-center animate-fade-in">
+                                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                  <Camera size={24} className="text-slate-400 group-hover:text-primary-500" />
+                                </div>
+                                <p className="text-sm font-bold text-slate-700 mb-1">Add Photo Reference</p>
+                                <p className="text-xs text-slate-500">Take a photo or upload from gallery</p>
+                              </div>
+                            )}
+                          </label>
+                        </div>
                       </div>
                     </>
                   )}
@@ -2396,6 +2492,10 @@ const VisitForm = () => {
           } else if (cameraTarget === 'unit' && activeUnitIndex !== null) {
             setExtinguishers(prev => prev.map((it, i) =>
               i === activeUnitIndex ? { ...it, maintenanceUnitPhoto: file } : it
+            ));
+          } else if (cameraTarget === 'validation' && activeUnitIndex !== null) {
+            setExtinguishers(prev => prev.map((it, i) =>
+              i === activeUnitIndex ? { ...it, validationPhoto: file } : it
             ));
           }
         }}
