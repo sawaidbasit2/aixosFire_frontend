@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../context/AuthContext';
@@ -12,12 +13,95 @@ import {
   Eye,
   Pencil,
   History,
-  Calendar
+  Calendar,
+  ScanLine,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import bcrypt from 'bcryptjs';
 import { useRef } from 'react';
 import CameraCapture from '../../components/CameraCapture';
 import CustomerHistoryModal from '../../components/CustomerHistoryModal';
+import VisitQrScanner from '../../components/VisitQrScanner';
+
+const EXPECTED_VISIT_QR = 'TM-EPKSA-A2026';
+
+/** Shared UI for site QR verification; `slotKey` picks which camera instance is active. */
+const QrScanFieldGroup = ({
+  slotKey,
+  qrScannerSlot,
+  onQrScannerSlotChange,
+  readerId,
+  qrCodeValue,
+  needsQrScan,
+  isQrValid,
+  onDecoded,
+  hint,
+}) => {
+  const active = qrScannerSlot === slotKey;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-5 space-y-4 mt-4 md:col-span-4">
+      <div className="flex items-start gap-3">
+        <div className="p-2 bg-primary-100 rounded-xl text-primary-600 shrink-0">
+          <ScanLine size={22} />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-slate-800">Scan QR Code</label>
+          <p className="text-xs text-slate-500 mt-1">{hint}</p>
+        </div>
+      </div>
+
+      {!active ? (
+        <button
+          type="button"
+          onClick={() => onQrScannerSlotChange(slotKey)}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors"
+        >
+          <ScanLine size={18} /> Start camera scan
+        </button>
+      ) : (
+        <div className="space-y-3">
+          <VisitQrScanner
+            readerId={readerId}
+            active={active}
+            onDecoded={onDecoded}
+          />
+          <button
+            type="button"
+            onClick={() => onQrScannerSlotChange(null)}
+            className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-white transition-colors"
+          >
+            Close camera
+          </button>
+        </div>
+      )}
+
+      {qrCodeValue ? (
+        <p className="text-xs font-mono text-slate-600 break-all bg-white border border-slate-100 rounded-xl px-3 py-2">
+          Last scan: {qrCodeValue}
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+        {isQrValid && needsQrScan ? (
+          <span className="flex items-center gap-1.5 text-green-700">
+            <CheckCircle2 size={18} aria-hidden /> Verified
+          </span>
+        ) : null}
+        {needsQrScan && qrCodeValue && !isQrValid ? (
+          <span className="flex items-center gap-1.5 text-red-600">
+            <XCircle size={18} aria-hidden /> Invalid
+          </span>
+        ) : null}
+        {needsQrScan && !qrCodeValue ? (
+          <span className="flex items-center gap-1.5 text-amber-700">
+            <AlertTriangle size={16} aria-hidden /> Scan required
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+};
 
 const getDefaultUnit = (material) => {
   if (['Pipes', 'Hose Reels', 'Hydrants'].includes(material)) return 'Meter';
@@ -175,9 +259,44 @@ const VisitForm = () => {
       hasChanges: false,
       newUnits: [],
       customMaterial: '',
-      validationPhoto: null
+      validationPhoto: null,
+      validation_mode: 'new',
+      validationFollowUpDate: ''
     }
   ]);
+
+  const [qrCodeValue, setQrCodeValue] = useState('');
+  /** Which inline scanner is open, e.g. `v-0` (Validation) or `r-1` (Refill); only one camera at a time */
+  const [qrScannerSlot, setQrScannerSlot] = useState(null);
+  const lastQrToastRef = useRef({ invalid: null });
+
+  const needsQrScan = useMemo(
+    () =>
+      extinguishers.some(
+        (ext) =>
+          ext.mode === 'Refill' ||
+          (ext.mode === 'Validation' && (ext.validation_mode || 'new') === 'new')
+      ),
+    [extinguishers]
+  );
+
+  /** Gate: valid when QR is not required for this visit, or scanned value matches expected code */
+  const isQrValid = !needsQrScan || qrCodeValue === EXPECTED_VISIT_QR;
+
+  const handleQrDecoded = (text) => {
+    const qrValue = (text || '').trim();
+    setQrCodeValue(qrValue);
+    if (qrValue === EXPECTED_VISIT_QR) {
+      toast.success('QR Code Verified');
+      setQrScannerSlot(null);
+      lastQrToastRef.current.invalid = null;
+      return;
+    }
+    if (lastQrToastRef.current.invalid !== qrValue) {
+      toast.error('Invalid QR Code');
+      lastQrToastRef.current.invalid = qrValue;
+    }
+  };
 
   const handleNewUnitChange = (unitIndex, field, value) => {
     setExtinguishers(prev =>
@@ -818,6 +937,10 @@ const VisitForm = () => {
       return;
     }
 
+    if (!isQrValid) {
+      toast.error('Please scan the valid site QR code before submitting.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -1027,7 +1150,8 @@ const VisitForm = () => {
           priority: 'Medium',
           performed_by: formData.performedBy || 'Agent',
           follow_up_date: formData.followUpDate || null,
-          follow_up_history: formData.followUpHistory || []
+          follow_up_history: formData.followUpHistory || [],
+          qr_code_value: needsQrScan ? (qrCodeValue || null) : null
         };
 
         // DEBUG LOGS (Updated)
@@ -1052,6 +1176,7 @@ const VisitForm = () => {
 
   return (
     <div className="relative min-h-[500px] max-w-4xl mx-auto p-2 md:p-8">
+      <Toaster position="top-center" />
       {loading && <PageLoader message="Processing your visit log..." />}
       {/* Header / Stepper */}
       <div className="flex items-center justify-between mb-8">
@@ -1396,6 +1521,7 @@ const VisitForm = () => {
               {/* Next Button */}
               <div className="flex justify-end pt-6">
                 <button
+                  type="button"
                   onClick={() => setStep(2)}
                   className="btn-primary flex items-center gap-2 px-8 py-3.5"
                 >
@@ -1632,6 +1758,17 @@ const VisitForm = () => {
                               </label>
                             </div>
                           </div>
+                          <QrScanFieldGroup
+                            slotKey={`v-${index}`}
+                            qrScannerSlot={qrScannerSlot}
+                            onQrScannerSlotChange={setQrScannerSlot}
+                            readerId={`visit-qr-v-${index}`}
+                            qrCodeValue={qrCodeValue}
+                            needsQrScan={needsQrScan}
+                            isQrValid={isQrValid}
+                            onDecoded={handleQrDecoded}
+                            hint="Scan the site verification QR after the photo reference."
+                          />
                         </>
                       ) : (
                         <div className="md:col-span-4">
@@ -1991,6 +2128,18 @@ const VisitForm = () => {
                           className={`input-field py-2 text-sm ${ext.isLocked ? 'bg-slate-50 cursor-not-allowed opacity-60' : ''}`}
                         />
                       </div>
+
+                      <QrScanFieldGroup
+                        slotKey={`r-${index}`}
+                        qrScannerSlot={qrScannerSlot}
+                        onQrScannerSlotChange={setQrScannerSlot}
+                        readerId={`visit-qr-r-${index}`}
+                        qrCodeValue={qrCodeValue}
+                        needsQrScan={needsQrScan}
+                        isQrValid={isQrValid}
+                        onDecoded={handleQrDecoded}
+                        hint="Scan the site verification QR after entering the expiry date."
+                      />
                     </>
                   )}
 
@@ -2423,7 +2572,12 @@ const VisitForm = () => {
 
           <div className="flex justify-between items-center pt-6 border-t border-slate-100">
             <button onClick={() => setStep(1)} className="px-6 py-3 text-slate-500 font-medium hover:bg-slate-50 rounded-xl transition-colors">Back</button>
-            <button onClick={() => setStep(3)} className="btn-primary flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setStep(3)}
+              disabled={!isQrValid}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+            >
               Next: Site Assessment <ArrowRight size={18} />
             </button>
           </div>
@@ -2602,7 +2756,12 @@ const VisitForm = () => {
 
             <div className="flex justify-between mt-8 pt-6 border-t border-slate-100">
               <button onClick={() => setStep(2)} className="px-6 py-3 text-slate-500 font-medium hover:bg-slate-50 rounded-xl transition-colors">Back</button>
-              <button onClick={handleSubmit} disabled={loading} className="btn-primary flex items-center gap-2 px-8 py-3 text-lg shadow-xl shadow-primary-500/20">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading || !isQrValid}
+                className="btn-primary flex items-center gap-2 px-8 py-3 text-lg shadow-xl shadow-primary-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+              >
                 {loading ? 'Submitting...' : 'Finish & Save Log'} <Check size={20} />
               </button>
             </div>
