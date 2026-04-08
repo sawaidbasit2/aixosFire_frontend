@@ -11,7 +11,8 @@ import {
   EyeOff,
   Eye,
   Pencil,
-  History
+  History,
+  Calendar
 } from 'lucide-react';
 import bcrypt from 'bcryptjs';
 import { useRef } from 'react';
@@ -144,6 +145,7 @@ const VisitForm = () => {
     customBusinessType: '',
     notes: '', riskAssessment: '', serviceRecommendations: '',
     followUpDate: '',
+    followUpHistory: [],
     customerPhoto: null,
     voiceNote: null,
     performedBy: 'Agent',
@@ -969,12 +971,12 @@ const VisitForm = () => {
               maintenance_unit_photo_url: photoUrl,
               extinguisher_photo: refPhotoUrl,
               expiry_date: item.expiryDate || null,
-               performed_by: formData.performedBy || 'Agent',
+              performed_by: formData.performedBy || 'Agent',
               is_sub_unit: false,
               validation_mode: item.mode === 'Validation' ? (item.validation_mode || 'new') : 'new',
               follow_up_date: formData.followUpDate || null,
-              follow_up_date_validation: (item.mode === 'Validation' && item.validation_mode === 'followup') 
-                ? (item.validationFollowUpDate || null) 
+              follow_up_date_validation: (item.mode === 'Validation' && item.validation_mode === 'followup')
+                ? (item.validationFollowUpDate || null)
                 : null
             });
           }
@@ -1024,17 +1026,14 @@ const VisitForm = () => {
           type: inquiryType,
           priority: 'Medium',
           performed_by: formData.performedBy || 'Agent',
-          follow_up_date: formData.followUpDate || null
+          follow_up_date: formData.followUpDate || null,
+          follow_up_history: formData.followUpHistory || []
         };
 
-        // DEBUG LOGS (As requested)
-        console.log("Step 3 Date (General):", formData.followUpDate);
-        console.log("Follow-up Tab Dates (specific):", extinguishers.filter(e => e.mode === 'Validation').map(e => e.validationFollowUpDate));
+        // DEBUG LOGS (Updated)
+        console.log("Step 3 History:", formData.followUpHistory);
+        console.log("Current Input Date:", formData.followUpDate);
         console.log("Final Inquiry Payload:", inquiryData);
-        console.log("Final Items Payload (first item sample):", allItemsPayload[0] ? {
-          general_follow_up: allItemsPayload[0].follow_up_date,
-          validation_follow_up: allItemsPayload[0].follow_up_date_validation
-        } : "Empty");
 
         if (allItemsPayload.length > 0) {
           // If no partner was selected (e.g. only follow-up validations), 
@@ -1558,11 +1557,10 @@ const VisitForm = () => {
                             <button
                               key={mode}
                               onClick={() => handleExtinguisherChange(index, 'validation_mode', mode)}
-                              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${
-                                ext.validation_mode === mode
+                              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${ext.validation_mode === mode
                                   ? 'bg-white text-slate-900 shadow-sm'
                                   : 'text-slate-500 hover:text-slate-700'
-                              }`}
+                                }`}
                             >
                               {mode === 'new' ? 'New Validation' : 'Follow-up'}
                             </button>
@@ -2517,8 +2515,69 @@ const VisitForm = () => {
                 <input name="notes" value={formData.notes} onChange={handleInputChange} className="input-field" placeholder="Private notes for admin/agent..." />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Follow-up Date</label>
-                <input type="date" name="followUpDate" value={formData.followUpDate} onChange={handleInputChange} className="input-field" />
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider">Follow-up Schedule</label>
+
+                {/* Date History List */}
+                {formData.followUpHistory.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    {formData.followUpHistory.map((date, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl animate-fade-in group">
+                        <div className="flex items-center gap-3 text-slate-700">
+                          <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg">
+                            <Calendar size={14} />
+                          </div>
+                          <span className="font-medium">{new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                          <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-tighter">Locked</span>
+                        </div>
+                        <button
+                          onClick={() => setFormData(prev => ({
+                            ...prev,
+                            followUpHistory: prev.followUpHistory.filter((_, i) => i !== idx)
+                          }))}
+                          className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                        >
+                          <Trash size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Entry Input */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="date"
+                      name="followUpDate"
+                      value={formData.followUpDate}
+                      onChange={handleInputChange}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="input-field pr-10"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!formData.followUpDate) return;
+                      if (formData.followUpHistory.includes(formData.followUpDate)) {
+                        alert("This date is already in the schedule.");
+                        return;
+                      }
+                      setFormData(prev => ({
+                        ...prev,
+                        followUpHistory: [...prev.followUpHistory, prev.followUpDate],
+                        followUpDate: '' // Clear input for next entry
+                      }));
+                    }}
+                    disabled={!formData.followUpDate}
+                    className="bg-primary-600 hover:bg-primary-700 disabled:bg-slate-200 disabled:text-slate-400 text-white px-4 rounded-xl transition-all flex items-center justify-center gap-2 font-bold text-xs whitespace-nowrap shadow-lg shadow-primary-500/10"
+                  >
+                    <Plus size={16} /> Add Date
+                  </button>
+                </div>
+                <p className="mt-2 text-[10px] text-slate-400 font-medium italic">
+                  Note: The latest date added will be set as the primary follow-up.
+                </p>
               </div>
               {/* <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Performed By</label>

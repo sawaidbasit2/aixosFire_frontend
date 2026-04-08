@@ -65,8 +65,8 @@ const QueryCard = ({ query, onViewDetails }) => {
       <div className="flex items-center gap-2 text-sm text-slate-600 mb-5">
         <Calendar size={16} className="text-slate-400" />
         <span>
-          Due: {query.visits?.follow_up_date
-            ? new Date(query.visits.follow_up_date).toLocaleDateString()
+          Due: {query.visits?.last_updated_follow_up_date
+            ? new Date(query.visits.last_updated_follow_up_date).toLocaleDateString()
             : 'No date set'}
         </span>
       </div>
@@ -210,7 +210,7 @@ const AgentDashboard = () => {
           .from('inquiries')
           .select(`
             id, inquiry_no, type, status, priority, created_at, updated_at,
-            visits!inner (id, visit_date, follow_up_date, agent_id)
+            visits!inner (id, visit_date, last_updated_follow_up_date, agent_id)
           `)
           .eq('agent_id', user.id)
           .order('created_at', { ascending: false });
@@ -389,8 +389,8 @@ const AgentDashboard = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600">
-                      {query.visits?.follow_up_date
-                        ? new Date(query.visits.follow_up_date).toLocaleDateString()
+                      {query.visits?.last_updated_follow_up_date
+                        ? new Date(query.visits.last_updated_follow_up_date).toLocaleDateString()
                         : 'No date set'}
                     </td>
                     <td className="px-6 py-4 text-right">

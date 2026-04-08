@@ -48,8 +48,9 @@ const QueryDetail = () => {
 
                 const { data: itemsData, error: itemsError } = await supabase
                     .from('inquiry_items')
-                    .select('*')
-                    .eq('inquiry_id', id);
+                    .select('*, follow_up_history(*)')
+                    .eq('inquiry_id', id)
+                    .order('created_at', { foreignTable: 'follow_up_history', ascending: false });
 
                 if (itemsError) throw itemsError;
 
@@ -148,14 +149,14 @@ const QueryDetail = () => {
                 </div>
             </div>
 
-            {query.follow_up_date && (
+            {query.last_updated_follow_up_date && (
                 <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3">
                     <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
                         <Calendar size={20} />
                     </div>
                     <div>
-                        <p className="text-xs text-blue-500 uppercase font-bold tracking-widest">Follow-up Scheduled</p>
-                        <p className="font-semibold text-blue-900">{formatDate(query.follow_up_date)}</p>
+                        <p className="text-xs text-blue-500 uppercase font-bold tracking-widest">Latest Follow-up Scheduled</p>
+                        <p className="font-semibold text-blue-900">{formatDate(query.last_updated_follow_up_date)}</p>
                     </div>
                 </div>
             )}
@@ -201,6 +202,22 @@ const QueryDetail = () => {
                                         <div className="p-5 bg-slate-50 rounded-2xl border-l-4 border-slate-300">
                                             <p className="text-xs uppercase font-bold text-slate-400 mb-2">Maintenance Notes</p>
                                             <p className="text-slate-600">{item.maintenance_notes}</p>
+                                        </div>
+                                    )}
+
+                                    {item.follow_up_history?.length > 0 && (
+                                        <div className="p-5 bg-blue-50/50 rounded-2xl border-l-4 border-blue-300">
+                                            <p className="text-xs uppercase font-bold text-blue-400 mb-3 flex items-center gap-2">
+                                                <Calendar size={14} /> Follow-up History
+                                            </p>
+                                            <div className="space-y-2">
+                                                {item.follow_up_history.map((hist, hIdx) => (
+                                                    <div key={hIdx} className="flex items-center justify-between text-sm">
+                                                        <span className="text-slate-600 font-medium">{formatDate(hist.follow_up_date)}</span>
+                                                        <span className="text-[10px] bg-white border border-blue-100 text-blue-400 px-1.5 py-0.5 rounded uppercase font-bold">Locked</span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
 
