@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import PageLoader from '../../components/PageLoader';
 import QRCode from 'qrcode';
 import { createInquiry } from '../../api/partners';
+import { isApiUrlConfigured } from '../../api/client';
+import { getVisitSubmitErrorMessage } from '../../api/submitErrors';
 import {
   Plus, Trash, Save, ArrowLeft, Building, FireExtinguisher, FileText,
   Search, Check, AlertTriangle, ArrowRight, UserPlus, MapPin, Camera, Image, Mic, Square,
@@ -942,6 +944,14 @@ const VisitForm = () => {
       return;
     }
 
+    if (!isApiUrlConfigured) {
+      toast.error(
+        'API URL is not configured. Set VITE_API_URL in Vercel (your backend HTTPS origin), redeploy, then try again.',
+        { duration: 12000 }
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       let finalCustId = formData.customerId;
@@ -1168,7 +1178,7 @@ const VisitForm = () => {
       navigate('/agent/dashboard');
     } catch (error) {
       console.error(error);
-      alert('Failed to submit visit log: ' + error.message);
+      toast.error(getVisitSubmitErrorMessage(error, isApiUrlConfigured), { duration: 10000 });
     } finally {
       setLoading(false);
     }

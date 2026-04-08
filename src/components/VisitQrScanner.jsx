@@ -40,7 +40,7 @@ const safeCleanup = (scanner) => {
   }
 };
 
-const waitForLayout = (readerId, maxAttempts = 30) =>
+const waitForLayout = (readerId, maxAttempts = 18) =>
   new Promise((resolve) => {
     let n = 0;
     const tick = () => {
@@ -76,12 +76,14 @@ const resolveCameraConfig = async () => {
 };
 
 const buildScannerConfig = () => ({
-  fps: 10,
-  disableFlip: false,
-  /** Dynamic box avoids qrbox larger than video (common cause of “never detects”) */
+  /** Higher FPS = more decode attempts per second (snappier scan) */
+  fps: 20,
+  /** QR is symmetric; skipping mirror retry saves ~half the per-frame work */
+  disableFlip: true,
+  /** Slightly smaller region = less pixels to decode each frame */
   qrbox: (viewfinderWidth, viewfinderHeight) => {
     const m = Math.min(viewfinderWidth, viewfinderHeight);
-    const side = Math.max(120, Math.min(300, Math.floor(m * 0.72)));
+    const side = Math.max(112, Math.min(260, Math.floor(m * 0.66)));
     return { width: side, height: side };
   },
 });
@@ -90,8 +92,8 @@ const createScanner = (readerId) =>
   new Html5Qrcode(readerId, {
     verbose: false,
     formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-    /** JS-based decoder path is more reliable for some printed QRs than BarcodeDetector */
-    experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+    /** Native BarcodeDetector (where available) is faster; falls back internally */
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
   });
 
 /**
