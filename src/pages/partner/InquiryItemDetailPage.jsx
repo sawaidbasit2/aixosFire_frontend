@@ -577,15 +577,6 @@ const InquiryItemDetailPage = () => {
                                                     </p>
                                                 </div>
                                                 <DetailField
-                                                    label="Estimated cost (SAR)"
-                                                    value={
-                                                        siteAssessment.estimated_cost != null &&
-                                                            siteAssessment.estimated_cost !== ''
-                                                            ? `SAR ${siteAssessment.estimated_cost}`
-                                                            : '—'
-                                                    }
-                                                />
-                                                <DetailField
                                                     label="Additional notes"
                                                     value={formatVal(siteAssessment.additional_notes)}
                                                 />
@@ -667,7 +658,7 @@ const InquiryItemDetailPage = () => {
                                         {quotation ? (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                 <DetailField
-                                                    label="Estimated cost (SAR)"
+                                                    label="Quotation Cost (SAR)"
                                                     value={quotation.estimated_cost ? `SAR ${quotation.estimated_cost}` : '—'}
                                                 />
                                                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">

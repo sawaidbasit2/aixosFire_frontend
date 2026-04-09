@@ -22,11 +22,41 @@ import {
 } from 'lucide-react';
 import bcrypt from 'bcryptjs';
 import { useRef } from 'react';
+import imageCompression from 'browser-image-compression';
 import CameraCapture from '../../components/CameraCapture';
 import CustomerHistoryModal from '../../components/CustomerHistoryModal';
 import VisitQrScanner from '../../components/VisitQrScanner';
 
 const EXPECTED_VISIT_QR = 'TM-EPKSA-A2026';
+
+/** Visit images (customer, validation ref, maintenance unit): max size after compression (45KB) */
+const MAX_VISIT_IMAGE_BYTES = 45 * 1024;
+
+async function compressVisitImageFile(file) {
+  if (!file?.type?.startsWith('image/')) {
+    toast.error('Please choose an image file');
+    return null;
+  }
+  console.log('Original size:', (file.size / 1024).toFixed(2), 'KB');
+  try {
+    const options = {
+      maxSizeMB: MAX_VISIT_IMAGE_BYTES / (1024 * 1024),
+      maxWidthOrHeight: 800,
+      useWebWorker: true,
+    };
+    const compressedFile = await imageCompression(file, options);
+    console.log('Compressed size:', (compressedFile.size / 1024).toFixed(2), 'KB');
+    if (compressedFile.size > MAX_VISIT_IMAGE_BYTES) {
+      toast.error('Image must be less than 45KB after compression. Try a simpler photo or lower resolution.');
+      return null;
+    }
+    return compressedFile;
+  } catch (err) {
+    console.error('Image compression failed:', err);
+    toast.error('Could not process image. Try another photo.');
+    return null;
+  }
+}
 
 /** Shared UI for site QR verification; `slotKey` picks which camera instance is active. */
 const QrScanFieldGroup = ({
@@ -78,11 +108,7 @@ const QrScanFieldGroup = ({
         </div>
       )}
 
-      {qrCodeValue ? (
-        <p className="text-xs font-mono text-slate-600 break-all bg-white border border-slate-100 rounded-xl px-3 py-2">
-          Last scan: {qrCodeValue}
-        </p>
-      ) : null}
+
 
       <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
         {isQrValid && needsQrScan ? (
@@ -652,10 +678,34 @@ const VisitForm = () => {
     );
   };
 
-  const handlePhotoUpload = (e) => {
-    const file = e.target.files[0];
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
     if (file) {
-      setFormData(prev => ({ ...prev, customerPhoto: file }));
+      e.target.value = '';
+      const compressed = await compressVisitImageFile(file);
+      if (compressed) {
+        setFormData(prev => ({ ...prev, customerPhoto: compressed }));
+      }
+    }
+  };
+
+  const handleValidationPhotoUpload = async (index, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const compressed = await compressVisitImageFile(file);
+    if (compressed) {
+      handleExtinguisherChange(index, 'validationPhoto', compressed);
+    }
+  };
+
+  const handleMaintenanceUnitPhotoUpload = async (index, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    const compressed = await compressVisitImageFile(file);
+    if (compressed) {
+      handleExtinguisherChange(index, 'maintenanceUnitPhoto', compressed);
     }
   };
 
@@ -950,6 +1000,23 @@ const VisitForm = () => {
         { duration: 12000 }
       );
       return;
+    }
+
+    if (formData.customerPhoto && formData.customerPhoto.size > MAX_VISIT_IMAGE_BYTES) {
+      toast.error('Customer image must be less than 45KB');
+      return;
+    }
+
+    for (let i = 0; i < extinguishers.length; i++) {
+      const item = extinguishers[i];
+      if (item.validationPhoto && item.validationPhoto.size > MAX_VISIT_IMAGE_BYTES) {
+        toast.error(`Validation photo reference (unit ${i + 1}) must be less than 45KB`);
+        return;
+      }
+      if (item.maintenanceUnitPhoto && item.maintenanceUnitPhoto.size > MAX_VISIT_IMAGE_BYTES) {
+        toast.error(`Maintenance unit photo (unit ${i + 1}) must be less than 45KB`);
+        return;
+      }
     }
 
     setLoading(true);
@@ -1497,6 +1564,9 @@ const VisitForm = () => {
                             <Camera size={16} />
                             Change Photo
                           </div>
+                          <p className="text-xs text-slate-500 mt-2 font-medium">
+                            Final size: {(formData.customerPhoto.size / 1024).toFixed(2)} KB (max 45 KB)
+                          </p>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center p-6 text-center animate-fade-in">
@@ -1694,8 +1764,8 @@ const VisitForm = () => {
                               key={mode}
                               onClick={() => handleExtinguisherChange(index, 'validation_mode', mode)}
                               className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${ext.validation_mode === mode
-                                  ? 'bg-white text-slate-900 shadow-sm'
-                                  : 'text-slate-500 hover:text-slate-700'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
                                 }`}
                             >
                               {mode === 'new' ? 'New Validation' : 'Follow-up'}
@@ -1728,12 +1798,7 @@ const VisitForm = () => {
                                 type="file"
                                 accept="image/*"
                                 disabled={ext.isLocked}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    handleExtinguisherChange(index, 'validationPhoto', file);
-                                  }
-                                }}
+                                onChange={(e) => handleValidationPhotoUpload(index, e)}
                                 id={`validation-photo-${index}`}
                                 className="hidden"
                               />
@@ -1755,6 +1820,9 @@ const VisitForm = () => {
                                       <Camera size={14} />
                                       Change Photo
                                     </div>
+                                    <p className="text-xs text-slate-500 mt-1.5 font-medium">
+                                      Final size: {(ext.validationPhoto.size / 1024).toFixed(2)} KB (max 45 KB)
+                                    </p>
                                   </div>
                                 ) : (
                                   <div className="flex flex-col items-center p-6 text-center animate-fade-in">
@@ -2508,14 +2576,7 @@ const VisitForm = () => {
                               type="file"
                               accept="image/*"
                               disabled={ext.isLocked}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  setExtinguishers(prev => prev.map((it, i) =>
-                                    i === index ? { ...it, maintenanceUnitPhoto: file } : it
-                                  ));
-                                }
-                              }}
+                              onChange={(e) => handleMaintenanceUnitPhotoUpload(index, e)}
                               className={`absolute inset-0 opacity-0 ${ext.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                             />
                             {ext.maintenanceUnitPhoto ? (
@@ -2526,6 +2587,9 @@ const VisitForm = () => {
                                   className={`h-24 w-24 object-cover rounded-lg mb-3 border shadow-sm ${ext.isLocked ? 'opacity-50' : ''}`}
                                 />
                                 <p className="text-xs text-slate-600">{ext.isLocked ? 'Photo Locked' : 'Click to change'}</p>
+                                <p className="text-xs text-slate-500 mt-1.5 font-medium">
+                                  Final size: {(ext.maintenanceUnitPhoto.size / 1024).toFixed(2)} KB (max 45 KB)
+                                </p>
                               </div>
                             ) : (
                               <>
@@ -2783,17 +2847,22 @@ const VisitForm = () => {
       <CameraCapture
         isOpen={isCameraOpen}
         onClose={() => setIsCameraOpen(false)}
-        onCapture={(file) => {
+        onCapture={async (file) => {
           if (cameraTarget === 'customer') {
-            setFormData(prev => ({ ...prev, customerPhoto: file }));
+            const compressed = await compressVisitImageFile(file);
+            if (compressed) {
+              setFormData(prev => ({ ...prev, customerPhoto: compressed }));
+            }
           } else if (cameraTarget === 'unit' && activeUnitIndex !== null) {
-            setExtinguishers(prev => prev.map((it, i) =>
-              i === activeUnitIndex ? { ...it, maintenanceUnitPhoto: file } : it
-            ));
+            const compressed = await compressVisitImageFile(file);
+            if (compressed) {
+              handleExtinguisherChange(activeUnitIndex, 'maintenanceUnitPhoto', compressed);
+            }
           } else if (cameraTarget === 'validation' && activeUnitIndex !== null) {
-            setExtinguishers(prev => prev.map((it, i) =>
-              i === activeUnitIndex ? { ...it, validationPhoto: file } : it
-            ));
+            const compressed = await compressVisitImageFile(file);
+            if (compressed) {
+              handleExtinguisherChange(activeUnitIndex, 'validationPhoto', compressed);
+            }
           }
         }}
       />

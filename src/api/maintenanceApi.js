@@ -39,19 +39,23 @@ export const fetchSiteAssessmentByInquiryId = async (inquiryId) => {
     return extractApiData(response, null);
 };
 
+/**
+ * POST /api/site-assessments
+ * Always send estimated_cost: null so the server does not apply a JS default (e.g. { estimated_cost = 100 } = body).
+ * Omitting the key is often interpreted as undefined and falls back to 100 in the API.
+ */
 export const upsertSiteAssessment = async ({
     inquiryId,
     observations,
     requiredServices,
-    estimatedCost,
     additionalNotes
 }) => {
     const response = await client.post('/site-assessments', {
         inquiry_id: inquiryId,
         observations: observations ?? '',
         required_services: requiredServices ?? '',
-        estimated_cost: estimatedCost,
-        additional_notes: additionalNotes || null
+        additional_notes: additionalNotes || null,
+        estimated_cost: null
     });
     return extractApiData(response, null);
 };

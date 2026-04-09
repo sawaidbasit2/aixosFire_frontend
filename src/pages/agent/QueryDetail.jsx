@@ -339,14 +339,12 @@ const QueryDetail = () => {
                                 <h2 className="font-bold">Partner Quotation</h2>
                             </div>
                             <div>
-                                <p className="text-xs text-slate-500">Estimated Cost</p>
+                                <p className="text-xs text-slate-500">Quotations Cost</p>
                                 <p className="text-3xl font-bold text-slate-900">
                                     {quotation.estimated_cost ? `SAR ${quotation.estimated_cost}` : '—'}
                                 </p>
                             </div>
-                            <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-2xl">
-                                Only estimated cost visible to agent.
-                            </p>
+                            
                         </section>
                     )}
 

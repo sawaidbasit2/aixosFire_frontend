@@ -13,7 +13,6 @@ const SiteAssessmentFormPage = () => {
     const [saving, setSaving] = useState(false);
     const [observations, setObservations] = useState('');
     const [requiredServices, setRequiredServices] = useState('');
-    const [estimatedCost, setEstimatedCost] = useState('');
     const [additionalNotes, setAdditionalNotes] = useState('');
 
     useEffect(() => {
@@ -28,11 +27,6 @@ const SiteAssessmentFormPage = () => {
                 if (existing) {
                     setObservations(existing.observations || '');
                     setRequiredServices(existing.required_services || '');
-                    setEstimatedCost(
-                        existing.estimated_cost != null && existing.estimated_cost !== ''
-                            ? String(existing.estimated_cost)
-                            : ''
-                    );
                     setAdditionalNotes(existing.additional_notes || '');
                 }
             } catch (e) {
@@ -57,7 +51,6 @@ const SiteAssessmentFormPage = () => {
                 inquiryId,
                 observations,
                 requiredServices,
-                estimatedCost,
                 additionalNotes
             });
             toast.success('Assessment saved');
@@ -159,33 +152,17 @@ const SiteAssessmentFormPage = () => {
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
-                                Estimated cost (SAR)
-                            </label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={estimatedCost}
-                                onChange={(e) => setEstimatedCost(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-4 text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
-                                Additional notes
-                            </label>
-                            <input
-                                type="text"
-                                value={additionalNotes}
-                                onChange={(e) => setAdditionalNotes(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-4 text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
-                                placeholder="Optional"
-                            />
-                        </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                            Additional notes
+                        </label>
+                        <input
+                            type="text"
+                            value={additionalNotes}
+                            onChange={(e) => setAdditionalNotes(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-4 text-slate-900 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+                            placeholder="Optional"
+                        />
                     </div>
 
                     <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4 pt-4 border-t border-slate-100">

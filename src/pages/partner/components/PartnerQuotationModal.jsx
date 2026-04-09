@@ -24,7 +24,7 @@ const PartnerQuotationModal = ({ isOpen, onClose, inquiryId, customerId, partner
 
         setLoading(true);
         try {
-            const quotationData = await createQuotation({
+            await createQuotation({
                 inquiryId,
                 partnerId,
                 customerId,
@@ -76,7 +76,7 @@ const PartnerQuotationModal = ({ isOpen, onClose, inquiryId, customerId, partner
                 <form onSubmit={handleSubmit} className="p-8 space-y-6">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                            Estimated Cost (SAR)
+                            Quotation Cost (SAR)
                         </label>
 
                         <input
