@@ -1,4 +1,6 @@
 import client from './client';
+import { createInquiryViaSupabase } from './inquirySupabase';
+import { isInquiryApiNetworkFailure } from './submitErrors';
 
 const extractApiData = (response, fallback = null) => {
     const payload = response?.data;
@@ -127,6 +129,17 @@ export const createInquiry = async (inquiryData, items) => {
         const response = await client.post('/inquiries', { inquiryData, items });
         return extractApiData(response, null);
     } catch (error) {
+        if (isInquiryApiNetworkFailure(error)) {
+            console.warn(
+                '[createInquiry] REST API unreachable (network/CORS/SSL). Saving via Supabase fallback.'
+            );
+            try {
+                return await createInquiryViaSupabase(inquiryData, items);
+            } catch (supabaseErr) {
+                console.error('createInquiry Supabase fallback failed:', supabaseErr);
+                throw supabaseErr;
+            }
+        }
         console.error('Error creating inquiry:', error);
         throw error;
     }

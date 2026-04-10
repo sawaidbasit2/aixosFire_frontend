@@ -1,19 +1,28 @@
+/** True when the HTTP client never got a response (Safari often: TypeError: Load failed). */
+export function isInquiryApiNetworkFailure(error) {
+    const msg = error?.message ?? String(error);
+    const code = error?.code;
+    const isAxios = error?.isAxiosError === true;
+    const noResponse = isAxios && !error.response;
+    const combined = [msg, error?.cause?.message, String(error?.cause ?? '')].filter(Boolean).join(' ');
+
+    return (
+        msg.includes('Load failed') ||
+        combined.includes('Load failed') ||
+        msg === 'Failed to fetch' ||
+        msg === 'Network Error' ||
+        code === 'ERR_NETWORK' ||
+        code === 'ECONNABORTED' ||
+        noResponse
+    );
+}
+
 /**
  * User-facing message for visit / inquiry submit failures (incl. Safari "Load failed").
  */
 export function getVisitSubmitErrorMessage(error, apiConfigured) {
     const msg = error?.message ?? String(error);
-    const code = error?.code;
-    const isAxios = error?.isAxiosError === true;
-    const noResponse = isAxios && !error.response;
-
-    const looksLikeNetwork =
-        msg === 'Load failed' ||
-        msg === 'Failed to fetch' ||
-        msg === 'Network Error' ||
-        code === 'ERR_NETWORK' ||
-        code === 'ECONNABORTED' ||
-        noResponse;
+    const looksLikeNetwork = isInquiryApiNetworkFailure(error);
 
     if (looksLikeNetwork) {
         if (!apiConfigured) {

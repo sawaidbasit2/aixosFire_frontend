@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield, Bookmark, FireExtinguisher, Clock, Menu, X, Tag } from 'lucide-react';
+import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield, Bookmark, FireExtinguisher, Clock, Menu, X, Tag, Bot } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useLocationTracker from '../hooks/useLocationTracker';
 import NotificationBell from './NotificationBell';
@@ -61,6 +61,7 @@ const Layout = ({ children }) => {
             return [
                 { icon: LayoutDashboard, label: 'Partner Dashboard', to: '/partner/dashboard' },
                 { icon: Tag, label: 'Stickers usage', to: '/partner/stickers' },
+                { icon: Bot, label: 'AI Agent', to: '/partner/ai-agent' },
             ];
         }
         return [];
