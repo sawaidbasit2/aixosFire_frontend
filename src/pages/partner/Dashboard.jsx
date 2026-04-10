@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
     Layout, Clock,
-    DollarSign, Users, Filter, Plus, ChevronRight,
-    CheckCircle2, Loader2
+    DollarSign, Users, Filter, ChevronRight,
+    CheckCircle2, Loader2, Tag
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getPartnerDashboard, getPartnerStats, getInquiries } from '../../api/partners';
+import { useAuth } from '../../context/AuthContext';
+import { fetchPartnerStickerSummary } from '../../api/partnerStickers';
 
 const CLOSED_LIKE_STATUSES = new Set([
     'accepted', 'closed', 'completed', 'approved', 'inquiry closed'
@@ -74,10 +76,12 @@ const InquiryCard = ({ inq }) => (
 );
 
 const PartnerDashboard = () => {
+    const { user } = useAuth();
     const [filterType, setFilterType] = useState('All');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [inquiries, setInquiries] = useState([]);
+    const [stickerSummary, setStickerSummary] = useState({ used: 0, total: 0 });
     const [stats, setStats] = useState({
         activeInquiries: 0,
         pendingInquiries: 0,
@@ -91,11 +95,16 @@ const PartnerDashboard = () => {
             setLoading(true);
             try {
                 const query = { type: filterType !== 'All' ? filterType : undefined };
-                const [dashboardData, statsData, inquiriesData] = await Promise.all([
+                const [dashboardData, statsData, inquiriesData, stickers] = await Promise.all([
                     getPartnerDashboard(),
                     getPartnerStats(),
-                    getInquiries(query)
+                    getInquiries(query),
+                    fetchPartnerStickerSummary(user?.id)
                 ]);
+                setStickerSummary({
+                    used: stickers.stickersUsed ?? 0,
+                    total: stickers.stickersTotal ?? 0
+                });
 
                 const allInquiriesForStats = filterType === 'All' ? inquiriesData : await getInquiries({});
                 const dashboardStats = dashboardData?.stats || {};
@@ -125,7 +134,7 @@ const PartnerDashboard = () => {
         };
 
         fetchDashboardData();
-    }, [filterType]);
+    }, [filterType, user?.id]);
 
     if (loading) {
         return (
@@ -158,12 +167,24 @@ const PartnerDashboard = () => {
     return (
         <div className="min-h-screen pb-20 px-4 md:px-6 animate-in fade-in duration-700">
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 md:gap-6 mb-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 md:gap-6 mb-12">
                 <StatCard icon={Layout} title="Total Active" value={stats.activeInquiries} color="bg-primary-500" subtitle="Inquiries" />
                 <StatCard icon={Clock} title="Total Pending" value={stats.pendingInquiries} color="bg-amber-500" subtitle="Awaiting Action" />
                 <StatCard icon={CheckCircle2} title="Total Closed" value={stats.closedInquiries} color="bg-emerald-500" subtitle="Past 30 Days" />
                 <StatCard icon={DollarSign} title="Total Sales" value={`SAR ${(stats.totalSales || 0).toLocaleString()}`} color="bg-indigo-500" subtitle="Gross Profit" />
                 <StatCard icon={Users} title="Total Agents" value={stats.totalAgents || 0} color="bg-pink-500" subtitle="Active Field Teams" />
+                <Link
+                    to="/partner/stickers"
+                    className="block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 h-full min-h-[140px]"
+                >
+                    <StatCard
+                        icon={Tag}
+                        title="Stickers usage"
+                        value={`${stickerSummary.used} / ${stickerSummary.total}`}
+                        color="bg-teal-500"
+                        subtitle="Used / total"
+                    />
+                </Link>
             </div>
 
             {/* Main Inquiries Section */}

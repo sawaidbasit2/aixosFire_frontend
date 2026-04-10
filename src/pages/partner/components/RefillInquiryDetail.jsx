@@ -143,7 +143,7 @@ const RefillInquiryDetail = ({ viewModel }) => {
                                 <div className="flex justify-between items-center pb-4 border-b border-slate-50">
                                     <p className="text-slate-500 font-medium">Refilling Charges</p>
                                     <p className="font-display font-black text-slate-900 text-lg">
-                                        ${fillingChargePerUnit.toFixed(2)}{' '}
+                                        SAR{fillingChargePerUnit.toFixed(2)}{' '}
                                         <span className="text-xs text-slate-400 font-bold">/ unit</span>
                                     </p>
                                 </div>
@@ -157,13 +157,13 @@ const RefillInquiryDetail = ({ viewModel }) => {
                                         )}
                                     </div>
                                     <p className="font-display font-black text-emerald-600 text-lg">
-                                        ${transportChargePerUnit.toFixed(2)}{' '}
+                                        SAR{transportChargePerUnit.toFixed(2)}{' '}
                                         <span className="text-xs text-slate-400 font-bold">/ unit</span>
                                     </p>
                                 </div>
                                 <div className="flex justify-between items-center pt-2">
                                     <p className="text-slate-900 font-black uppercase text-sm">Estimated Total Per Unit</p>
-                                    <p className="font-display font-black text-primary-600 text-2xl">${estimatedTotalPerUnit.toFixed(2)}</p>
+                                    <p className="font-display font-black text-primary-600 text-2xl">SAR{estimatedTotalPerUnit.toFixed(2)}</p>
                                 </div>
                             </div>
                         </div>

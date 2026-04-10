@@ -36,6 +36,7 @@ import PartnerDashboard from './pages/partner/Dashboard';
 import InquiryItemsList from './pages/partner/InquiryItemsList';
 import InquiryItemDetailPage from './pages/partner/InquiryItemDetailPage';
 import SiteAssessmentFormPage from './pages/partner/SiteAssessmentFormPage';
+import StickersUsagePage from './pages/partner/StickersUsagePage';
 
 
 
@@ -118,6 +119,7 @@ function App() {
               <ProtectedRoute allowedRoles={['partner']}>
                 <Routes>
                   <Route path="dashboard" element={<PartnerDashboard />} />
+                  <Route path="stickers" element={<StickersUsagePage />} />
                   <Route path="inquiry/:id/item/:itemId/site-assessment" element={<SiteAssessmentFormPage />} />
                   <Route path="inquiry/:id/item/:itemId" element={<InquiryItemDetailPage />} />
                   <Route path="inquiry/:id" element={<InquiryItemsList />} />
