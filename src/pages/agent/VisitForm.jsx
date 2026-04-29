@@ -77,8 +77,11 @@ const QrScanFieldGroup = ({
           <ScanLine size={22} />
         </div>
         <div>
-          <label className="block text-sm font-bold text-slate-800">Scan QR Code</label>
+          <label className="block text-sm font-bold text-slate-800">
+            Scan QR Code <span className="font-normal text-slate-400">(Optional)</span>
+          </label>
           <p className="text-xs text-slate-500 mt-1">{hint}</p>
+          <p className="text-xs text-slate-400 mt-0.5">You can skip this step if QR is not available.</p>
         </div>
       </div>
 
@@ -1973,7 +1976,7 @@ const VisitForm = () => {
                             needsQrScan={needsQrScan}
                             isQrValid={isQrValid}
                             onDecoded={handleQrDecoded}
-                            hint="Scan the site verification QR after the photo reference."
+                            hint="Scan the site verification QR after the photo reference (optional)."
                           />
                         </>
                       ) : (
@@ -2344,7 +2347,7 @@ const VisitForm = () => {
                         needsQrScan={needsQrScan}
                         isQrValid={isQrValid}
                         onDecoded={handleQrDecoded}
-                        hint="Scan the site verification QR after entering the expiry date."
+                        hint="Scan the site verification QR after entering the expiry date (optional)."
                       />
                     </>
                   )}

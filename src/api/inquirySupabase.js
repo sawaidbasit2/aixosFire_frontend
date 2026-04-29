@@ -80,7 +80,7 @@ export async function createInquiryViaSupabase(inquiryData, items) {
     customer_id: inquiryData.customer_id,
     type: inquiryData.type,
     priority: inquiryData.priority || 'Medium',
-    status: inquiryData.status || 'pending',
+    status: inquiryData.status || ((inquiryData.type || '').toLowerCase() === 'validation' ? 'completed' : 'pending'),
   };
 
   const optionalInquiryKeys = [

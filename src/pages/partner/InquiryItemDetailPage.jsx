@@ -363,8 +363,9 @@ const InquiryItemDetailPage = () => {
         'No issue notes for this line item.';
 
     const isInquiryPending = (inquiry.status || '').toLowerCase() === 'pending';
-    const isMaintenanceInquiry =
-        (inquiry.type || inquiry.inquiry_type || '').toString().trim().toLowerCase() === 'maintenance';
+    const inquiryTypeKey = (inquiry.type || inquiry.inquiry_type || '').toString().trim().toLowerCase();
+    const isMaintenanceInquiry = inquiryTypeKey === 'maintenance';
+    const isRefilledInquiry = inquiryTypeKey === 'refill' || inquiryTypeKey === 'refilled';
     const isInquiryAccepted = (inquiry.status || '').toLowerCase() === 'accepted';
     const canGenerateServiceReport =
         (inquiry.status || '').toLowerCase() === 'completed' || inquiry.service_confirmed === true;
@@ -946,7 +947,7 @@ const InquiryItemDetailPage = () => {
 
                 </div>
 
-                {isInquiryPending && (
+                {isInquiryPending && (isRefilledInquiry || isMaintenanceInquiry) && (
                     <div className="lg:sticky lg:top-8 self-start w-full lg:w-[360px]">
                         <PartnerActionCard
                             onAccept={() => handleStatusUpdate('accepted', { delivery_mode: 'agent' })}

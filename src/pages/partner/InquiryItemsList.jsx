@@ -446,33 +446,37 @@ const InquiryItemsList = () => {
                                 </button>
                             )}
 
-                            <button
-                                type="button"
-                                onClick={() => handleStatusUpdate('accepted', { delivery_mode: 'agent' })}
-                                disabled={actionLoading || inquiry.status === 'accepted'}
-                                className="px-6 py-3 bg-emerald-500 text-white hover:bg-emerald-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg w-full sm:w-auto"
-                            >
-                                {actionLoading ? <Loader2 className="animate-spin" size={16} /> : <Truck size={16} />}
-                                Agent Delivery
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsDeliveryModalOpen(true)}
-                                disabled={actionLoading || inquiry.status === 'accepted'}
-                                className="px-6 py-3 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg w-full sm:w-auto"
-                            >
-                                {actionLoading ? <Loader2 className="animate-spin" size={16} /> : <Calendar size={16} />}
-                                {inquiry.delivery_status === 'pending' ? 'Update Dates' : 'Partner Delivery'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleStatusUpdate('rejected')}
-                                disabled={actionLoading || inquiry.status === 'accepted'}
-                                className="px-6 py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto"
-                            >
-                                {actionLoading ? <Loader2 className="animate-spin" size={16} /> : <XCircle size={16} />}
-                                Reject
-                            </button>
+                            {isRefill && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleStatusUpdate('accepted', { delivery_mode: 'agent' })}
+                                        disabled={actionLoading || inquiry.status === 'accepted'}
+                                        className="px-6 py-3 bg-emerald-500 text-white hover:bg-emerald-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg w-full sm:w-auto"
+                                    >
+                                        {actionLoading ? <Loader2 className="animate-spin" size={16} /> : <Truck size={16} />}
+                                        Agent Delivery
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsDeliveryModalOpen(true)}
+                                        disabled={actionLoading || inquiry.status === 'accepted'}
+                                        className="px-6 py-3 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg w-full sm:w-auto"
+                                    >
+                                        {actionLoading ? <Loader2 className="animate-spin" size={16} /> : <Calendar size={16} />}
+                                        {inquiry.delivery_status === 'pending' ? 'Update Dates' : 'Partner Delivery'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleStatusUpdate('rejected')}
+                                        disabled={actionLoading || inquiry.status === 'accepted'}
+                                        className="px-6 py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm w-full sm:w-auto"
+                                    >
+                                        {actionLoading ? <Loader2 className="animate-spin" size={16} /> : <XCircle size={16} />}
+                                        Reject
+                                    </button>
+                                </>
+                            )}
                         </div>
                     )}
 
