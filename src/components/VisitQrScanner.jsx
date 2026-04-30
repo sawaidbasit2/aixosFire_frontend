@@ -1,107 +1,50 @@
 import { useEffect, useRef } from 'react';
-import toast from 'react-hot-toast';
-import {
-  Html5Qrcode,
-  Html5QrcodeScannerState,
-  Html5QrcodeSupportedFormats,
-} from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
 
-const safeCleanup = (scanner) => {
+const safeStop = async (scanner) => {
   if (!scanner) return;
   try {
     const state = scanner.getState();
-    const running =
+    if (
       state === Html5QrcodeScannerState.SCANNING ||
-      state === Html5QrcodeScannerState.PAUSED;
-    if (running) {
-      scanner
-        .stop()
-        .then(() => scanner.clear())
-        .catch(() => {
-          try {
-            scanner.clear();
-          } catch {
-            /* ignore */
-          }
-        });
-    } else {
-      try {
-        scanner.clear();
-      } catch {
-        /* ignore */
-      }
+      state === Html5QrcodeScannerState.PAUSED
+    ) {
+      await scanner.stop();
     }
   } catch {
-    try {
-      scanner.clear();
-    } catch {
-      /* ignore */
-    }
+    /* ignore */
   }
-};
-
-const waitForLayout = (readerId, maxAttempts = 18) =>
-  new Promise((resolve) => {
-    let n = 0;
-    const tick = () => {
-      const el = document.getElementById(readerId);
-      if (el && el.clientWidth >= 48) {
-        resolve(true);
-        return;
-      }
-      n += 1;
-      if (n >= maxAttempts) {
-        resolve(!!document.getElementById(readerId));
-        return;
-      }
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  });
-
-/** Pick a real device when possible — `environment` alone often fails on laptops (no back camera). */
-const resolveCameraConfig = async () => {
   try {
-    const cameras = await Html5Qrcode.getCameras();
-    if (!cameras?.length) {
-      return { facingMode: 'user' };
-    }
-    const back = cameras.find((c) =>
-      /back|rear|environment|wide/i.test(c.label || '')
-    );
-    return back ? back.id : cameras[0].id;
+    scanner.clear();
   } catch {
-    return { facingMode: 'user' };
+    /* ignore */
   }
 };
 
-const buildScannerConfig = () => ({
-  /** Higher FPS = more decode attempts per second (snappier scan) */
-  fps: 20,
-  /** QR is symmetric; skipping mirror retry saves ~half the per-frame work */
-  disableFlip: true,
-  /** Slightly smaller region = less pixels to decode each frame */
-  qrbox: (viewfinderWidth, viewfinderHeight) => {
-    const m = Math.min(viewfinderWidth, viewfinderHeight);
-    const side = Math.max(112, Math.min(260, Math.floor(m * 0.66)));
-    return { width: side, height: side };
-  },
-});
-
-const createScanner = (readerId) =>
-  new Html5Qrcode(readerId, {
-    verbose: false,
-    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-    /** Native BarcodeDetector (where available) is faster; falls back internally */
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+const waitForElement = (id, maxMs = 3000) =>
+  new Promise((resolve) => {
+    const start = Date.now();
+    const check = () => {
+      const el = document.getElementById(id);
+      if (el && el.clientWidth > 0) return resolve(true);
+      if (Date.now() - start > maxMs) return resolve(false);
+      requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
   });
 
 /**
- * Renders a camera QR scanner into `#readerId`. Parent controls visibility via `active`.
+ * Inline QR code scanner using html5-qrcode.
+ *
+ * Props:
+ *   readerId  – unique DOM id for the scanner container
+ *   active    – mount/unmount the camera stream
+ *   onDecoded – called with the raw decoded string on every successful frame
  */
 const VisitQrScanner = ({ readerId, active, onDecoded }) => {
   const onDecodedRef = useRef(onDecoded);
   const scannerRef = useRef(null);
+  const stoppedRef = useRef(false);
 
   useEffect(() => {
     onDecodedRef.current = onDecoded;
@@ -110,81 +53,110 @@ const VisitQrScanner = ({ readerId, active, onDecoded }) => {
   useEffect(() => {
     if (!active || !readerId) return undefined;
 
-    let cancelled = false;
+    stoppedRef.current = false;
+    let html5QrCode = null;
 
-    const run = async () => {
-      await waitForLayout(readerId);
-      if (cancelled) return;
+    const start = async () => {
+      const found = await waitForElement(readerId);
+      if (!found || stoppedRef.current) return;
 
-      if (!document.getElementById(readerId)) {
-        if (!cancelled) {
-          toast.error('QR scanner could not find its view. Try again.');
-        }
-        return;
-      }
-
-      let cameraConfig = await resolveCameraConfig();
-      if (cancelled) return;
-
-      let html5QrCode = createScanner(readerId);
+      html5QrCode = new Html5Qrcode(readerId, { verbose: false });
       scannerRef.current = html5QrCode;
 
-      const scanConfig = buildScannerConfig();
-
-      const startWith = async (cam) =>
-        html5QrCode.start(
-          cam,
-          scanConfig,
-          (decodedText) => {
-            onDecodedRef.current?.(decodedText);
-          },
-          () => {}
-        );
-
+      // Prefer back/rear camera; fall back to any available camera
+      let cameraId;
       try {
-        await startWith(cameraConfig);
-      } catch (firstErr) {
-        if (cancelled) return;
-        console.warn('QR camera start (primary) failed, trying fallback:', firstErr);
-        safeCleanup(html5QrCode);
-        html5QrCode = createScanner(readerId);
-        scannerRef.current = html5QrCode;
-        try {
-          await startWith({ facingMode: 'user' });
-        } catch (secondErr) {
-          if (!cancelled) {
-            console.error('QR scanner start failed:', secondErr);
-            toast.error(
-              'Camera could not start. Allow camera access, or try another browser.'
-            );
-          }
-          safeCleanup(html5QrCode);
-          scannerRef.current = null;
-          return;
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras?.length) {
+          const back = cameras.find((c) =>
+            /back|rear|environment|wide/i.test(c.label || '')
+          );
+          cameraId = (back ?? cameras[0]).id;
         }
+      } catch {
+        /* getCameras failed — will use facingMode below */
       }
 
-      if (cancelled) {
-        safeCleanup(html5QrCode);
-        scannerRef.current = null;
+      if (stoppedRef.current) return;
+
+      const config = {
+        fps: 10,
+        // Fixed 250×250 box works reliably; dynamic sizing can confuse the decoder
+        qrbox: { width: 250, height: 250 },
+        // Allow mirror-image frames — essential for front cameras and some rear cameras
+        disableFlip: false,
+        // No experimentalFeatures: BarcodeDetector API is unreliable across mobile browsers
+      };
+
+      const onSuccess = (decodedText) => {
+        if (stoppedRef.current) return;
+        stoppedRef.current = true;
+        // Stop the scanner immediately so it doesn't keep firing
+        safeStop(html5QrCode).finally(() => {
+          scannerRef.current = null;
+        });
+        onDecodedRef.current?.(decodedText);
+      };
+
+      const onError = () => {
+        /* suppress per-frame "not found" errors */
+      };
+
+      try {
+        // Try with a real camera id first (more reliable on mobile)
+        if (cameraId) {
+          await html5QrCode.start(cameraId, config, onSuccess, onError);
+        } else {
+          throw new Error('no cameraId');
+        }
+      } catch {
+        if (stoppedRef.current) return;
+        // Fallback: environment facing mode (works on most modern mobile browsers)
+        try {
+          await safeStop(html5QrCode);
+          html5QrCode = new Html5Qrcode(readerId, { verbose: false });
+          scannerRef.current = html5QrCode;
+          await html5QrCode.start(
+            { facingMode: { exact: 'environment' } },
+            config,
+            onSuccess,
+            onError
+          );
+        } catch {
+          if (stoppedRef.current) return;
+          // Last resort: any available camera (usually front on laptops)
+          try {
+            await safeStop(html5QrCode);
+            html5QrCode = new Html5Qrcode(readerId, { verbose: false });
+            scannerRef.current = html5QrCode;
+            await html5QrCode.start(
+              { facingMode: 'user' },
+              config,
+              onSuccess,
+              onError
+            );
+          } catch (err) {
+            console.error('[VisitQrScanner] all camera attempts failed:', err);
+            scannerRef.current = null;
+          }
+        }
       }
     };
 
-    run();
+    start();
 
     return () => {
-      cancelled = true;
+      stoppedRef.current = true;
       const s = scannerRef.current;
       scannerRef.current = null;
-      safeCleanup(s);
+      safeStop(s);
     };
   }, [active, readerId]);
 
   return (
     <div
       id={readerId}
-      className="w-full min-h-[240px] min-w-[200px] rounded-2xl overflow-hidden bg-slate-900"
-      style={{ width: '100%' }}
+      className="w-full min-h-[260px] rounded-2xl overflow-hidden bg-slate-900"
     />
   );
 };
