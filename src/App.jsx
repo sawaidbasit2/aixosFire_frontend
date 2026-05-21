@@ -5,6 +5,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPassword from './pages/ForgotPassword';
+import SetPassword from './pages/SetPassword';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -76,6 +77,7 @@ function App() {
             <Route path="/login/:role" element={<LoginPage />} />
             <Route path="/register/:role" element={<RegisterPage />} />
             <Route path="/forgot-password/:role" element={<ForgotPassword />} />
+            <Route path="/set-password" element={<SetPassword />} />
 
             {/* Agent Routes */}
             <Route path="/agent/*" element={

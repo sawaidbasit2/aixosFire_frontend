@@ -10,10 +10,10 @@ import { getVisitSubmitErrorMessage } from '../../api/submitErrors';
 import {
   Plus, Trash, Save, ArrowLeft, Building, FireExtinguisher, FileText,
   Search, Check, AlertTriangle, ArrowRight, UserPlus, MapPin, Camera, Image, Mic, Square,
-  EyeOff, Eye, Pencil, History, Calendar, ScanLine, CheckCircle2, XCircle,
+  Pencil, History, Calendar, ScanLine, CheckCircle2, XCircle,
   X, RefreshCw, Smartphone
 } from 'lucide-react';
-import bcrypt from 'bcryptjs';
+import client from '../../api/client';
 import { useRef } from 'react';
 import imageCompression from 'browser-image-compression';
 import CameraCapture from '../../components/CameraCapture';
@@ -143,7 +143,6 @@ const VisitForm = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [locationModal, setLocationModal] = useState({ open: false, type: null });
-  const [showPassword, setShowPassword] = useState(false);
   const [recordingIndex, setRecordingIndex] = useState(null);
   const [unitVoiceWarnings, setUnitVoiceWarnings] = useState({});
   const [partners, setPartners] = useState([]);
@@ -244,7 +243,7 @@ const VisitForm = () => {
   // Form Data
   const [formData, setFormData] = useState({
     customerId: null,
-    businessName: '', ownerName: '', phone: '', email: '', password: '',
+    businessName: '', ownerName: '', phone: '', email: '',
     address: '', businessType: 'Retail Store - Grocery',
     customBusinessType: '',
     notes: '', riskAssessment: '', serviceRecommendations: '',
@@ -832,15 +831,13 @@ const VisitForm = () => {
         if (formData.businessType === 'Other' && formData.customBusinessType.trim()) {
           finalBusinessType = formData.customBusinessType.trim();
         }
-        const hashedPassword = bcrypt.hashSync(formData.password || '123456', 8);
-
         const { data: newCust, error: insertErr } = await supabase
           .from('customers')
           .insert([{
             business_name: formData.businessName,
             owner_name: formData.ownerName || null,
             email: formData.email || `lead-${Date.now()}@temp.com`,
-            password: hashedPassword,
+            password: '$2a$08$unusable.placeholder.hash.xxxxxxxxxxxxxxxxxxxxxx',
             phone: formData.phone || null,
             address: formData.address || null,
             business_type: finalBusinessType,
@@ -854,6 +851,15 @@ const VisitForm = () => {
         custId = newCust.id;
         setFormData(prev => ({ ...prev, customerId: custId }));
         console.log('[QR] New customer created for QR, id:', custId);
+
+        // Send setup email if real email provided (non-blocking)
+        if (formData.email && !formData.email.includes('@temp.com')) {
+          client.post('/auth/send-setup-email', {
+            customerId: custId,
+            email: formData.email,
+            businessName: formData.businessName,
+          }).catch(err => console.warn('[QR] Setup email failed:', err));
+        }
       }
 
       const url = `${window.location.origin}/agent/customer/${custId}`;
@@ -1193,15 +1199,13 @@ const VisitForm = () => {
           imageUrl = await uploadCustomerPhoto(formData.customerPhoto);
         }
 
-        const hashedPassword = bcrypt.hashSync(formData.password || '123456', 8);
-
         const { data: leadData, error: leadError } = await supabase
           .from('customers')
           .insert([{
             business_name: formData.businessName,
             owner_name: formData.ownerName || null,
             email: formData.email || `lead-${Date.now()}@temp.com`,
-            password: hashedPassword,
+            password: '$2a$08$unusable.placeholder.hash.xxxxxxxxxxxxxxxxxxxxxx',
             phone: formData.phone || null,
             address: formData.address || null,
             business_type: finalBusinessType,
@@ -1214,6 +1218,15 @@ const VisitForm = () => {
 
         finalCustId = leadData[0].id;
         console.log("New Lead Created with ID:", finalCustId);
+
+        // Send setup email if real email provided (non-blocking)
+        if (formData.email && !formData.email.includes('@temp.com')) {
+          client.post('/auth/send-setup-email', {
+            customerId: finalCustId,
+            email: formData.email,
+            businessName: formData.businessName,
+          }).catch(err => console.warn('[Submit] Setup email failed:', err));
+        }
 
         try {
           const qrUrl = `${window.location.origin}/agent/customer/${finalCustId}`;
@@ -1837,27 +1850,6 @@ const VisitForm = () => {
                   onChange={handleInputChange}
                   disabled={!isNewCustomer && !isEditingCustomer}
                 />
-
-                {isNewCustomer && (
-                  <div className="relative md:col-span-2">
-                    <Input
-                      label="Password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="Customer login password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-[42px] text-slate-400 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                )}
 
                 {/* Address with Location Button */}
                 <div className="md:col-span-2 relative">
