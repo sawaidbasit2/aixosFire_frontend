@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield, Bookmark, FireExtinguisher, Clock, Menu, X, Tag, Bot, MessageSquare } from 'lucide-react';
+import { LogOut, LayoutDashboard, Calendar, FileText, User, ShoppingBag, Map, Shield, Bookmark, FireExtinguisher, Clock, Menu, X, Tag, Bot, MessageSquare, BarChart2, Handshake, Wrench, FileBarChart, Users } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useLocationTracker from '../hooks/useLocationTracker';
 import NotificationBell from './NotificationBell';
@@ -53,12 +53,16 @@ const Layout = ({ children }) => {
             ];
         } else if (role === 'admin') {
             return [
-                { icon: LayoutDashboard, label: 'Admin Panel', to: '/admin/dashboard' },
-                { icon: User, label: 'Manage Agents', to: '/admin/agents' },
-                { icon: ShoppingBag, label: 'Total Customers', to: '/admin/customers' },
-                { icon: Bookmark, label: 'Service Queue', to: '/admin/services' },
-                { icon: Map, label: 'Global Map', to: '/admin/map' },
-                { icon: MessageSquare, label: 'Complaint Center', to: '/admin/complaints' },
+                { icon: LayoutDashboard, label: 'Dashboard',       to: '/admin/dashboard',   group: 'Overview' },
+                { icon: BarChart2,       label: 'Analytics',        to: '/admin/analytics',   group: 'Overview' },
+                { icon: User,            label: 'Agents',           to: '/admin/agents',      group: 'Management' },
+                { icon: Handshake,       label: 'Partners',         to: '/admin/partners',    group: 'Management' },
+                { icon: Users,           label: 'Customers',        to: '/admin/customers',   group: 'Management' },
+                { icon: Bookmark,        label: 'Service Queue',    to: '/admin/services',    group: 'Operations' },
+                { icon: Wrench,          label: 'Operations',       to: '/admin/operations',  group: 'Operations' },
+                { icon: Map,             label: 'Global Map',       to: '/admin/map',         group: 'Operations' },
+                { icon: MessageSquare,   label: 'Complaints',       to: '/admin/complaints',  group: 'Support' },
+                { icon: FileBarChart,    label: 'Reports',          to: '/admin/reports',     group: 'Support' },
             ];
         } else if (role === 'partner') {
             return [
@@ -107,16 +111,35 @@ const Layout = ({ children }) => {
                     </button>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-1.5 pt-6 overflow-y-auto">
-                    <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Main Menu</p>
-                    {getNavItems().map((item, idx) => (
-                        <div key={idx} onClick={() => setIsMobileMenuOpen(false)}>
-                            <SidebarItem
-                                {...item}
-                                active={location.pathname === item.to}
-                            />
-                        </div>
-                    ))}
+                <nav className="flex-1 px-4 pt-6 overflow-y-auto custom-scrollbar">
+                    {(() => {
+                        const items = getNavItems();
+                        const groups = [...new Set(items.map(i => i.group).filter(Boolean))];
+                        if (!groups.length) {
+                            return (
+                                <div className="space-y-1.5">
+                                    <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Main Menu</p>
+                                    {items.map((item, idx) => (
+                                        <div key={idx} onClick={() => setIsMobileMenuOpen(false)}>
+                                            <SidebarItem {...item} active={location.pathname === item.to || location.pathname.startsWith(item.to + '/')} />
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        }
+                        return groups.map(group => (
+                            <div key={group} className="mb-4">
+                                <p className="px-4 text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] mb-2">{group}</p>
+                                <div className="space-y-1">
+                                    {items.filter(i => i.group === group).map((item, idx) => (
+                                        <div key={idx} onClick={() => setIsMobileMenuOpen(false)}>
+                                            <SidebarItem {...item} active={location.pathname === item.to || location.pathname.startsWith(item.to + '/')} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ));
+                    })()}
                 </nav>
 
                 <div className="p-4 border-t border-slate-800 bg-slate-900/50">
@@ -157,15 +180,31 @@ const Layout = ({ children }) => {
                     </div>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-2 pt-4">
-                    <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Menu</p>
-                    {getNavItems().map((item, idx) => (
-                        <SidebarItem
-                            key={idx}
-                            {...item}
-                            active={location.pathname === item.to}
-                        />
-                    ))}
+                <nav className="flex-1 px-4 pt-4 overflow-y-auto custom-scrollbar">
+                    {(() => {
+                        const items = getNavItems();
+                        const groups = [...new Set(items.map(i => i.group).filter(Boolean))];
+                        if (!groups.length) {
+                            return (
+                                <div className="space-y-1.5">
+                                    <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Menu</p>
+                                    {items.map((item, idx) => (
+                                        <SidebarItem key={idx} {...item} active={location.pathname === item.to || location.pathname.startsWith(item.to + '/')} />
+                                    ))}
+                                </div>
+                            );
+                        }
+                        return groups.map(group => (
+                            <div key={group} className="mb-5">
+                                <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2">{group}</p>
+                                <div className="space-y-1">
+                                    {items.filter(i => i.group === group).map((item, idx) => (
+                                        <SidebarItem key={idx} {...item} active={location.pathname === item.to || location.pathname.startsWith(item.to + '/')} />
+                                    ))}
+                                </div>
+                            </div>
+                        ));
+                    })()}
                 </nav>
 
                 <div className="p-4 border-t border-slate-800 bg-slate-900/50">

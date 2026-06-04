@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import { Search, Filter, Mail, Phone, MapPin, Building } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, Mail, Phone, MapPin, Building, ChevronRight, Users } from 'lucide-react';
 import PageLoader from '../../components/PageLoader';
 
 const AdminCustomers = () => {
@@ -37,8 +38,13 @@ const AdminCustomers = () => {
             {loading && <PageLoader message="Loading customer base..." />}
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-slate-900">Customer Base</h1>
-                    <p className="text-slate-500">View and manage registered businesses.</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Admin · Management</p>
+                    <h1 className="text-2xl font-display font-bold text-slate-900">Customer Management</h1>
+                    <p className="text-slate-500 text-sm mt-0.5">View, search and manage all registered businesses.</p>
+                </div>
+                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl flex items-center gap-2">
+                    <Users size={16}/>
+                    <span className="text-sm font-bold">{customers.length} total</span>
                 </div>
             </div>
 
@@ -63,15 +69,16 @@ const AdminCustomers = () => {
                             <th className="px-6 py-4">Contact</th>
                             <th className="px-6 py-4">Type</th>
                             <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4 text-right">Join Date</th>
+                            <th className="px-6 py-4">Join Date</th>
+                            <th className="px-6 py-4"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                         {!loading && filteredCustomers.length === 0 ? (
-                            <tr><td colSpan="5" className="px-6 py-8 text-center text-slate-400">No customers found.</td></tr>
+                            <tr><td colSpan="6" className="px-6 py-8 text-center text-slate-400">No customers found.</td></tr>
                         ) : (
                             filteredCustomers.map(customer => (
-                                <tr key={customer.id} className="hover:bg-slate-50 transition-colors">
+                                <tr key={customer.id} className="hover:bg-slate-50 transition-colors group">
                                     <td className="px-6 py-4">
                                         <div className="font-bold text-slate-900">{customer.business_name}</div>
                                         <div className="text-xs text-slate-400 flex items-center gap-1 mt-1">
@@ -100,8 +107,14 @@ const AdminCustomers = () => {
                                             {customer.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right text-sm text-slate-500">
+                                    <td className="px-6 py-4 text-sm text-slate-500">
                                         {new Date(customer.created_at).toLocaleDateString()}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <Link to={`/admin/customers/${customer.id}`}
+                                            className="flex items-center gap-1 text-xs font-bold text-primary-600 hover:text-primary-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            View <ChevronRight size={13}/>
+                                        </Link>
                                     </td>
                                 </tr>
                             ))

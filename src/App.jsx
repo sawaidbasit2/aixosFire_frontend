@@ -28,10 +28,17 @@ import CustomerComplaintPage from './pages/customer/ComplaintPage';
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AgentManagement from './pages/admin/Agents';
+import AgentProfile from './pages/admin/AgentProfile';
 import GlobalMap from './pages/admin/Map';
 import AdminServices from './pages/admin/Services';
 import AdminCustomers from './pages/admin/Customers';
+import CustomerProfile from './pages/admin/CustomerProfile';
 import ComplaintCenter from './pages/admin/ComplaintCenter';
+import Analytics from './pages/admin/Analytics';
+import Partners from './pages/admin/Partners';
+import PartnerProfile from './pages/admin/PartnerProfile';
+import Operations from './pages/admin/Operations';
+import Reports from './pages/admin/Reports';
 import AgentPerformance from './pages/perfomance/Dashboard';
 import CategoryDetails from './pages/perfomance/CategoryDetails';
 
@@ -116,10 +123,17 @@ function App() {
                 <Routes>
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="agents" element={<AgentManagement />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="agents/:id" element={<AgentProfile />} />
                   <Route path="customers" element={<AdminCustomers />} />
+                  <Route path="customers/:id" element={<CustomerProfile />} />
+                  <Route path="partners" element={<Partners />} />
+                  <Route path="partners/:id" element={<PartnerProfile />} />
                   <Route path="map" element={<GlobalMap />} />
                   <Route path="services" element={<AdminServices />} />
+                  <Route path="operations" element={<Operations />} />
                   <Route path="complaints" element={<ComplaintCenter />} />
+                  <Route path="reports" element={<Reports />} />
                 </Routes>
               </ProtectedRoute>
             } />

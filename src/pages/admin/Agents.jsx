@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import { Check, X, User, Phone, MapPin, FileText, Shield, Pause } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Check, X, User, Phone, MapPin, FileText, Shield, Pause, BarChart2 } from 'lucide-react';
 import PageLoader from '../../components/PageLoader';
 import { AGENT_STATUS } from '../../constants/agentApprovalStatus';
 
@@ -114,23 +115,28 @@ const AgentManagement = () => {
     return (
         <div className="relative min-h-[400px] space-y-6">
             {loading && <PageLoader message="Loading agents..." />}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-slate-900">Agent Management</h1>
-                    <p className="text-slate-500">Approve new applications and manage existing agents.</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Admin · Management</p>
+                    <h1 className="text-2xl font-display font-bold text-slate-900">Agent Management</h1>
+                    <p className="text-slate-500 text-sm mt-0.5">Approve applications, manage agents & review performance.</p>
                 </div>
-                <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex-wrap gap-1">
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab.value}
-                            type="button"
-                            onClick={() => setActiveTab(tab.value)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.value ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-3">
+                    <Link to="/admin/analytics" className="btn-outline text-sm py-2 px-4 flex items-center gap-2">
+                        <BarChart2 size={15}/> Performance
+                    </Link>
+                    <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex-wrap gap-1">
+                        {TABS.map((tab) => (
+                            <button
+                                key={tab.value}
+                                type="button"
+                                onClick={() => setActiveTab(tab.value)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.value ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -198,6 +204,12 @@ const AgentManagement = () => {
                                 const showHold = norm !== AGENT_STATUS.HOLD;
                                 return (
                                     <div className="flex flex-row flex-wrap md:flex-col gap-2 w-full md:w-auto mt-4 md:mt-0">
+                                        <Link
+                                            to={`/admin/agents/${agent.id}`}
+                                            className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all"
+                                        >
+                                            <BarChart2 size={15} /> Profile
+                                        </Link>
                                         {showAccept && (
                                             <button
                                                 type="button"
