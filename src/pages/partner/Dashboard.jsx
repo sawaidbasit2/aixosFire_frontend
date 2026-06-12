@@ -6,19 +6,24 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getPartnerDashboard, getPartnerStats, getInquiries } from '../../api/partners';
+import { repairValidationInquiryStatuses } from '../../api/inquirySupabase';
 import { useAuth } from '../../context/AuthContext';
-import { fetchPartnerStickerSummary } from '../../api/partnerStickers';
+import { fetchPartnerStickerSummary, repairMissingStickerRecords } from '../../api/partnerStickers';
 
 const CLOSED_LIKE_STATUSES = new Set([
     'accepted', 'closed', 'completed', 'approved', 'inquiry closed'
 ]);
 
+// Validation inquiries are always treated as completed regardless of stored status
+const resolveStatus = (inq) => {
+    const type = (inq.type || inq.inquiry_type || '').toString().trim().toLowerCase();
+    if (type === 'validation') return 'completed';
+    return (inq.status ?? '').toString().trim().toLowerCase() || 'pending';
+};
+
 const countClosedLikeInquiries = (inquiries) => {
     if (!Array.isArray(inquiries)) return 0;
-    return inquiries.filter((inq) => {
-        const s = (inq.status ?? '').toString().trim().toLowerCase();
-        return CLOSED_LIKE_STATUSES.has(s);
-    }).length;
+    return inquiries.filter((inq) => CLOSED_LIKE_STATUSES.has(resolveStatus(inq))).length;
 };
 
 const StatCard = ({ icon: Icon, title, value, color, subtitle }) => {
@@ -50,11 +55,11 @@ const InquiryCard = ({ inq }) => (
                 <p className="font-black text-primary-600 text-lg tracking-tight">{inq.inquiry_no}</p>
                 <p className="text-sm text-slate-600 mt-1 line-clamp-1">{inq.customers?.business_name || 'Generic Client'}</p>
             </div>
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${['active', 'completed', 'accepted'].includes(inq.status?.toLowerCase())
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${['active', 'completed', 'accepted'].includes(resolveStatus(inq))
                     ? 'bg-emerald-100 text-emerald-700'
                     : 'bg-amber-100 text-amber-700'
                 }`}>
-                {inq.status || 'Pending'}
+                {resolveStatus(inq) || 'Pending'}
             </span>
         </div>
 
@@ -93,6 +98,11 @@ const PartnerDashboard = () => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             setLoading(true);
+            // Run repairs in parallel before fetching display data
+            await Promise.all([
+                repairValidationInquiryStatuses(),
+                repairMissingStickerRecords(user?.id),
+            ]);
             try {
                 const query = { type: filterType !== 'All' ? filterType : undefined };
                 const [dashboardData, statsData, inquiriesData, stickers] = await Promise.all([
@@ -252,9 +262,9 @@ const PartnerDashboard = () => {
                                         </span>
                                     </td>
                                     <td className="px-8 py-6">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${['active', 'completed', 'accepted'].includes(inq.status?.toLowerCase()) ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${['active', 'completed', 'accepted'].includes(resolveStatus(inq)) ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                                             }`}>
-                                            {inq.status}
+                                            {resolveStatus(inq)}
                                         </span>
                                     </td>
                                     <td className="px-8 py-6 text-right">

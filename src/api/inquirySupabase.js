@@ -354,3 +354,23 @@ export async function createInquiryViaSupabase(inquiryData, items) {
 
   return { id: inquiryId, via: 'supabase' };
 }
+
+/**
+ * One-time repair: update any Validation inquiry still saved as 'pending' to 'completed'.
+ * Safe to call on every dashboard load — only touches rows that need fixing.
+ */
+export async function repairValidationInquiryStatuses() {
+  try {
+    const { error } = await supabase
+      .from('inquiries')
+      .update({ status: 'completed' })
+      .eq('type', 'Validation')
+      .eq('status', 'pending');
+
+    if (error) {
+      console.warn('[repairValidationInquiryStatuses] update failed:', error.message);
+    }
+  } catch (err) {
+    console.warn('[repairValidationInquiryStatuses] unexpected error:', err);
+  }
+}

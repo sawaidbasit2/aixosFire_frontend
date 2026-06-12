@@ -4,6 +4,7 @@ import { ArrowLeft, Filter, Loader2, Tag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   fetchPartnerStickerUsageLogs,
+  repairMissingStickerRecords,
   stickerLogRowDisplay,
 } from '../../api/partnerStickers';
 
@@ -43,6 +44,7 @@ const StickersUsagePage = () => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
+      await repairMissingStickerRecords(partnerId);
       const data = await fetchPartnerStickerUsageLogs(partnerId);
       if (!cancelled) {
         setRows(data);

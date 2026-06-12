@@ -142,6 +142,14 @@ export const createInquiry = async (inquiryData, items) => {
         err.status = 400;
         throw err;
     }
+
+    // Validation inquiries are auto-completed — bypass REST API entirely.
+    // The REST API backend ignores the status field and always saves 'pending'.
+    // createInquiryViaSupabase correctly saves status='completed' for validation.
+    if (inquiryType === 'validation') {
+        return await createInquiryViaSupabase({ ...inquiryData, status: 'completed' }, items);
+    }
+
     try {
         const response = await client.post('/inquiries', { inquiryData, items });
         return extractApiData(response, null);
