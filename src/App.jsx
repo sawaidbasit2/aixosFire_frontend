@@ -39,6 +39,8 @@ import Partners from './pages/admin/Partners';
 import PartnerProfile from './pages/admin/PartnerProfile';
 import Operations from './pages/admin/Operations';
 import Reports from './pages/admin/Reports';
+import InquiryList from './pages/admin/InquiryList';
+import InquiryDetail from './pages/admin/InquiryDetail';
 import AgentPerformance from './pages/perfomance/Dashboard';
 import CategoryDetails from './pages/perfomance/CategoryDetails';
 
@@ -134,6 +136,8 @@ function App() {
                   <Route path="operations" element={<Operations />} />
                   <Route path="complaints" element={<ComplaintCenter />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="inquiries" element={<InquiryList />} />
+                  <Route path="inquiries/:id" element={<InquiryDetail />} />
                 </Routes>
               </ProtectedRoute>
             } />

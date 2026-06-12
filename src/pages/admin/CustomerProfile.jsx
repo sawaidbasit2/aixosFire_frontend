@@ -66,6 +66,13 @@ const CustomerProfile = () => {
         return { totalServices, completed, pending, qrVerified, openComplaints };
     }, [inquiries, complaints]);
 
+    // Must be before any early returns to satisfy Rules of Hooks
+    const complaintThreads = useMemo(() => {
+        const userMessages = complaints.filter(c => !c.is_admin);
+        const adminReplies = complaints.filter(c => c.is_admin);
+        return { userMessages, adminReplies, total: complaints.length };
+    }, [complaints]);
+
     if (loading) return <PageLoader message="Loading customer profile..." />;
     if (!customer) return (
         <div className="text-center py-20">
@@ -76,13 +83,6 @@ const CustomerProfile = () => {
             </Link>
         </div>
     );
-
-    // Group complaints into threads
-    const complaintThreads = useMemo(() => {
-        const userMessages = complaints.filter(c => !c.is_admin);
-        const adminReplies = complaints.filter(c => c.is_admin);
-        return { userMessages, adminReplies, total: complaints.length };
-    }, [complaints]);
 
     const TABS = [
         { id: 'overview', label: 'Overview' },

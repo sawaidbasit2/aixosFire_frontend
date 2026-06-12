@@ -32,6 +32,7 @@ const Analytics = () => {
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState('6m');
     const [raw, setRaw] = useState({ inquiries: [], customers: [], agents: [], partners: [] });
+    const [allTimeInq, setAllTimeInq] = useState([]);
 
     useEffect(() => {
         const load = async () => {
@@ -72,6 +73,25 @@ const Analytics = () => {
         };
         load();
     }, [period]);
+
+    // Fetch ALL-TIME inquiries once — no date filter — to match Dashboard card values
+    useEffect(() => {
+        supabase
+            .from('inquiries')
+            .select('id,type,status')
+            .then(({ data }) => setAllTimeInq(data || []));
+    }, []);
+
+    // All-time card values — same logic as Dashboard
+    const allTimeMetrics = useMemo(() => {
+        const total     = allTimeInq.length;
+        const completed = allTimeInq.filter(i => ['completed','accepted','closed'].includes((i.status||'').toLowerCase())).length;
+        const totalRevenue = allTimeInq
+            .filter(i => ['completed','accepted','closed'].includes((i.status||'').toLowerCase()))
+            .reduce((sum, i) => sum + (SERVICE_PRICE[(i.type||'').toLowerCase()] || 50), 0);
+        const completionRate = total ? Math.round((completed / total) * 100) : 0;
+        return { total, completed, totalRevenue, completionRate };
+    }, [allTimeInq]);
 
     const metrics = useMemo(() => {
         const { inquiries, customers, agents } = raw;
@@ -164,9 +184,9 @@ const Analytics = () => {
 
             {/* KPI Row */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icon={DollarSign}   title="Revenue"           value={`SAR ${metrics.totalRevenue.toLocaleString()}`} color="bg-emerald-500" trend={8}  subtext="Estimated from completions" />
-                <StatCard icon={Activity}     title="Total Inquiries"   value={metrics.total}           color="bg-blue-500"    trend={5}  subtext={`Period: ${period}`} />
-                <StatCard icon={CheckCircle}  title="Completed"         value={metrics.completed}       color="bg-teal-500"    subtext={`${metrics.completionRate}% completion rate`} />
+                <StatCard icon={DollarSign}   title="Sales & Revenue"          value={`SAR ${allTimeMetrics.totalRevenue.toLocaleString()}`} color="bg-emerald-500" trend={8}  subtext={`${allTimeMetrics.completed} closed · all time`} />
+                <StatCard icon={Activity}     title="Total Inquiries"          value={allTimeMetrics.total}           color="bg-blue-500"    trend={5}  subtext={`${allTimeMetrics.total - allTimeMetrics.completed} active · all time`} />
+                <StatCard icon={CheckCircle}  title="All-Time Completions"     value={`${allTimeMetrics.completed} / ${allTimeMetrics.total}`} color="bg-teal-500"    subtext={`${allTimeMetrics.completionRate}% completion rate`} />
                 <StatCard icon={Clock}        title="Pending"           value={metrics.pending}         color="bg-amber-500"   subtext={`${metrics.rejected} rejected`} />
             </div>
 

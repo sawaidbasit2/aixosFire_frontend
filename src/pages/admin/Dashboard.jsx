@@ -9,7 +9,7 @@ import {
 import {
     Users, DollarSign, Activity, AlertCircle, CheckCircle,
     UserPlus, Handshake, BarChart2, ArrowRight, ArrowUpRight,
-    MessageSquare, FileText
+    MessageSquare, FileText, TrendingUp, Eye, Clock
 } from 'lucide-react';
 import StatCard from '../../components/admin/StatCard';
 
@@ -24,6 +24,117 @@ const getBadgeClass = (status) => {
     if (['in progress','scheduled'].includes(s)) return 'bg-blue-100 text-blue-700';
     return 'bg-amber-100 text-amber-700';
 };
+
+/* ---------- Enhanced custom stat cards ---------- */
+
+const RevenueCard = ({ revenue, totalInquiries, closedInquiries }) => (
+    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-emerald-500">
+                <DollarSign size={20} className="text-white" />
+            </div>
+            <span className="text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1 bg-green-100 text-green-700">
+                <TrendingUp size={11} /> 12%
+            </span>
+        </div>
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Sales &amp; Revenue</p>
+        <h3 className="text-2xl font-bold text-slate-900">SAR {revenue.toLocaleString()}</h3>
+        <div className="mt-3 pt-3 border-t border-slate-50 space-y-1.5">
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Total Inquiries</span>
+                <span className="font-bold text-slate-700">{totalInquiries}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Closed / Completed</span>
+                <span className="font-bold text-emerald-600">{closedInquiries}</span>
+            </div>
+        </div>
+    </div>
+);
+
+const TotalInquiriesCard = ({ total, active, closed }) => (
+    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col">
+        <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-blue-500">
+                <Activity size={20} className="text-white" />
+            </div>
+        </div>
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Total Inquiries</p>
+        <h3 className="text-2xl font-bold text-slate-900">{total}</h3>
+        <div className="mt-3 pt-3 border-t border-slate-50 space-y-1.5 flex-1">
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Active</span>
+                <span className="font-bold text-blue-600">{active}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Closed</span>
+                <span className="font-bold text-slate-600">{closed}</span>
+            </div>
+        </div>
+        <Link
+            to="/admin/inquiries"
+            className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl transition-colors"
+        >
+            <Eye size={12} /> View Details
+        </Link>
+    </div>
+);
+
+const CompletedCard = ({ completed, total, rate }) => (
+    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-teal-500">
+                <CheckCircle size={20} className="text-white" />
+            </div>
+        </div>
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">All-Time Completions</p>
+        <h3 className="text-2xl font-bold text-slate-900">
+            {completed} <span className="text-slate-400 font-medium text-lg">/ {total}</span>
+        </h3>
+        <p className="text-xs text-slate-400 mt-1">Completed inquiries</p>
+        <div className="mt-3">
+            <div className="flex justify-between text-xs mb-1">
+                <span className="text-slate-400">Completion Rate</span>
+                <span className="font-bold text-teal-600">{rate}%</span>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-1.5">
+                <div
+                    className="bg-teal-500 h-1.5 rounded-full transition-all duration-700"
+                    style={{ width: `${rate}%` }}
+                />
+            </div>
+        </div>
+    </div>
+);
+
+const PipelineCard = ({ pending, inProgress, scheduled }) => (
+    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-amber-500">
+                <Clock size={20} className="text-white" />
+            </div>
+        </div>
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Active Pipeline</p>
+        <h3 className="text-2xl font-bold text-slate-900">{pending + inProgress + scheduled}</h3>
+        <p className="text-xs text-slate-400 mt-1">Awaiting action</p>
+        <div className="mt-3 pt-3 border-t border-slate-50 space-y-1.5">
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Pending</span>
+                <span className="font-bold text-amber-600">{pending}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">In Progress</span>
+                <span className="font-bold text-blue-600">{inProgress}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Scheduled</span>
+                <span className="font-bold text-violet-600">{scheduled}</span>
+            </div>
+        </div>
+    </div>
+);
+
+/* ------------------------------------------------ */
 
 const AdminDashboard = () => {
     const [data, setData] = useState(null);
@@ -48,7 +159,10 @@ const AdminDashboard = () => {
                     supabase.from('partners').select('*', { count: 'exact', head: true }),
                     supabase.from('complaints').select('*', { count: 'exact', head: true }).eq('is_admin', false).eq('is_read', false),
                     supabase.from('inquiries').select('id,type,status,created_at,agent_id').order('created_at', { ascending: false }),
-                    supabase.from('inquiries').select('id,inquiry_no,type,status,created_at,customers(business_name),agents(name)').order('created_at', { ascending: false }).limit(6),
+                    supabase.from('inquiries')
+                        .select('id,inquiry_no,type,status,created_at,customer_id,agent_id,customers(business_name),agents(name)')
+                        .order('created_at', { ascending: false })
+                        .limit(6),
                     supabase.from('agents').select('id,name').or('status.ilike.accepted,status.ilike.active'),
                 ]);
 
@@ -83,9 +197,16 @@ const AdminDashboard = () => {
                 });
                 const typeBreakdown = Object.entries(typeMap).map(([name, value]) => ({ name, value }));
 
-                // Completion ratio
+                // Completion metrics
                 const completed = list.filter(i => ['completed','accepted','closed'].includes((i.status||'').toLowerCase())).length;
                 const completionRate = list.length ? Math.round((completed / list.length) * 100) : 0;
+                const closedInquiries = list.filter(i => ['completed','accepted','closed','rejected','cancelled'].includes((i.status||'').toLowerCase())).length;
+                const activeInquiries = list.length - closedInquiries;
+
+                // Pipeline breakdown
+                const pendingCount   = list.filter(i => (i.status||'').toLowerCase() === 'pending').length;
+                const inProgressCount = list.filter(i => (i.status||'').toLowerCase() === 'in progress').length;
+                const scheduledCount = list.filter(i => (i.status||'').toLowerCase() === 'scheduled').length;
 
                 // Top agents by inquiry count
                 const agentInquiryMap = {};
@@ -107,7 +228,12 @@ const AdminDashboard = () => {
                     openComplaints: openComplaints || 0,
                     totalInquiries: list.length,
                     completedInquiries: completed,
+                    closedInquiries,
+                    activeInquiries,
                     pendingInquiries: list.filter(i => !['completed','accepted','closed','rejected'].includes((i.status||'').toLowerCase())).length,
+                    pendingCount,
+                    inProgressCount,
+                    scheduledCount,
                     totalRevenue,
                     completionRate,
                     revenueChart,
@@ -147,26 +273,34 @@ const AdminDashboard = () => {
 
             {/* KPI Row 1 */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icon={DollarSign}  title="Total Revenue"   value={`SAR ${(data?.totalRevenue||0).toLocaleString()}`} color="bg-emerald-500" trend={12} subtext="From completed services" />
-                <StatCard icon={Activity}    title="Total Inquiries" value={data?.totalInquiries||0}  color="bg-blue-500"    trend={8}  subtext={`${data?.pendingInquiries||0} pending`} />
+                <RevenueCard
+                    revenue={data?.totalRevenue || 0}
+                    totalInquiries={data?.totalInquiries || 0}
+                    closedInquiries={data?.closedInquiries || 0}
+                />
+                <StatCard icon={Handshake}   title="Total Partners"  value={data?.totalPartners||0}   color="bg-orange-500" subtext="Service partners" />
                 <StatCard icon={Users}       title="Active Agents"   value={data?.activeAgents||0}    color="bg-violet-500"  subtext={`${data?.totalAgents||0} total registered`} />
                 <StatCard icon={AlertCircle} title="Open Complaints" value={data?.openComplaints||0}  color="bg-red-500"     subtext="Unread threads" />
             </div>
 
             {/* KPI Row 2 */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard icon={UserPlus}    title="Total Customers" value={data?.totalCustomers||0}  color="bg-sky-500"    trend={5} subtext="Registered businesses" />
-                <StatCard icon={Handshake}   title="Total Partners"  value={data?.totalPartners||0}   color="bg-orange-500" subtext="Service partners" />
-                <StatCard icon={CheckCircle} title="Completed"       value={data?.completedInquiries||0} color="bg-teal-500" subtext="All time completions" />
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-6 flex flex-col justify-between">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Completion Rate</p>
-                    <div>
-                        <p className="text-2xl font-bold text-slate-900 mb-2">{data?.completionRate||0}%</p>
-                        <div className="w-full bg-slate-100 rounded-full h-2">
-                            <div className="bg-emerald-500 h-2 rounded-full transition-all duration-700" style={{ width: `${data?.completionRate||0}%` }} />
-                        </div>
-                    </div>
-                </div>
+                <StatCard icon={UserPlus} title="Total Customers" value={data?.totalCustomers||0} color="bg-sky-500" trend={5} subtext="Registered businesses" />
+                <TotalInquiriesCard
+                    total={data?.totalInquiries || 0}
+                    active={data?.activeInquiries || 0}
+                    closed={data?.closedInquiries || 0}
+                />
+                <CompletedCard
+                    completed={data?.completedInquiries || 0}
+                    total={data?.totalInquiries || 0}
+                    rate={data?.completionRate || 0}
+                />
+                <PipelineCard
+                    pending={data?.pendingCount || 0}
+                    inProgress={data?.inProgressCount || 0}
+                    scheduled={data?.scheduledCount || 0}
+                />
             </div>
 
             {/* Charts Row */}
@@ -174,7 +308,7 @@ const AdminDashboard = () => {
                 <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-soft p-6">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="font-bold text-slate-900">Revenue & Inquiry Trends</h3>
+                            <h3 className="font-bold text-slate-900">Revenue &amp; Inquiry Trends</h3>
                             <p className="text-xs text-slate-400 mt-0.5">Last 6 months overview</p>
                         </div>
                         <Link to="/admin/analytics" className="text-xs font-bold text-primary-600 hover:underline flex items-center gap-1">
@@ -272,7 +406,7 @@ const AdminDashboard = () => {
                 <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-100 shadow-soft p-6">
                     <div className="flex items-center justify-between mb-5">
                         <h3 className="font-bold text-slate-900">Recent Inquiries</h3>
-                        <Link to="/admin/services" className="text-xs font-bold text-primary-600 hover:underline flex items-center gap-1">
+                        <Link to="/admin/inquiries" className="text-xs font-bold text-primary-600 hover:underline flex items-center gap-1">
                             View all <ArrowRight size={12}/>
                         </Link>
                     </div>
@@ -280,8 +414,35 @@ const AdminDashboard = () => {
                         {(data?.recentInquiries||[]).map(inq => (
                             <div key={inq.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-slate-50 transition-colors">
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-bold text-slate-900 truncate">{inq.inquiry_no || `#${inq.id?.toString().slice(-6)}`}</p>
-                                    <p className="text-xs text-slate-400 truncate">{inq.customers?.business_name || '—'} · {inq.agents?.name || 'Unassigned'}</p>
+                                    <Link
+                                        to={`/admin/inquiries/${inq.id}`}
+                                        className="text-sm font-bold text-slate-900 hover:text-primary-600 truncate block"
+                                    >
+                                        {inq.inquiry_no || `#${inq.id?.toString().slice(-6)}`}
+                                    </Link>
+                                    <p className="text-xs text-slate-400 flex items-center gap-1 flex-wrap">
+                                        {inq.customer_id ? (
+                                            <Link
+                                                to={`/admin/customers/${inq.customer_id}`}
+                                                className="hover:text-sky-600 hover:underline font-medium"
+                                            >
+                                                {inq.customers?.business_name || '—'}
+                                            </Link>
+                                        ) : (
+                                            <span>{inq.customers?.business_name || '—'}</span>
+                                        )}
+                                        <span>·</span>
+                                        {inq.agent_id ? (
+                                            <Link
+                                                to={`/admin/agents/${inq.agent_id}`}
+                                                className="hover:text-violet-600 hover:underline font-medium"
+                                            >
+                                                {inq.agents?.name || 'Unassigned'}
+                                            </Link>
+                                        ) : (
+                                            <span>{inq.agents?.name || 'Unassigned'}</span>
+                                        )}
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                                     <span className="text-xs font-semibold text-slate-400 capitalize hidden sm:block">{inq.type||'—'}</span>
