@@ -582,6 +582,11 @@ const VisitForm = () => {
           return { ...item, mode: value, isLocked: false, hasChanges: false, price: 180 };
         }
 
+        // Photo uploads are always allowed regardless of lock state — each unit owns its photo independently
+        if (field === 'validationPhoto') {
+          return { ...item, validationPhoto: value };
+        }
+
         // Other fields blocked if locked
         if (item.isLocked) return item;
 
@@ -2203,47 +2208,37 @@ const VisitForm = () => {
 
                           <div className="md:col-span-3">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Photo Reference</label>
-                            <div className="relative group">
+                            <div className="relative flex flex-col items-center justify-center w-full min-h-[120px] border-2 border-dashed rounded-2xl transition-all bg-white border-slate-300 hover:border-primary-500 hover:bg-primary-50/10 cursor-pointer overflow-hidden">
                               <input
                                 type="file"
                                 accept="image/*"
-                                disabled={ext.isLocked}
                                 onChange={(e) => handleValidationPhotoUpload(index, e)}
-                                id={`validation-photo-${index}`}
-                                className="hidden"
+                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                               />
-                              <label
-                                htmlFor={`validation-photo-${index}`}
-                                className={`flex flex-col items-center justify-center w-full min-h-[120px] border-2 border-dashed rounded-2xl transition-all ${ext.isLocked
-                                  ? 'bg-slate-50 border-slate-200 cursor-not-allowed'
-                                  : 'bg-white border-slate-300 hover:border-primary-500 hover:bg-primary-50/10 cursor-pointer'
-                                  }`}
-                              >
-                                {ext.validationPhoto ? (
-                                  <div className="relative w-full p-2 flex flex-col items-center animate-fade-in">
-                                    <img
-                                      src={URL.createObjectURL(ext.validationPhoto)}
-                                      className="h-24 w-24 object-cover rounded-xl shadow-md border-2 border-white mb-2"
-                                      alt="Preview"
-                                    />
-                                    <div className="flex items-center gap-1.5 text-xs font-bold text-primary-600 uppercase tracking-wider">
-                                      <Camera size={14} />
-                                      Change Photo
-                                    </div>
-                                    <p className="text-xs text-slate-500 mt-1.5 font-medium">
-                                      Final size: {(ext.validationPhoto.size / 1024).toFixed(2)} KB (max 45 KB)
-                                    </p>
+                              {ext.validationPhoto ? (
+                                <div className="relative w-full p-2 flex flex-col items-center animate-fade-in pointer-events-none">
+                                  <img
+                                    src={URL.createObjectURL(ext.validationPhoto)}
+                                    className="h-24 w-24 object-cover rounded-xl shadow-md border-2 border-white mb-2"
+                                    alt="Preview"
+                                  />
+                                  <div className="flex items-center gap-1.5 text-xs font-bold text-primary-600 uppercase tracking-wider">
+                                    <Camera size={14} />
+                                    Change Photo
                                   </div>
-                                ) : (
-                                  <div className="flex flex-col items-center p-6 text-center animate-fade-in">
-                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                      <Camera size={24} className="text-slate-400 group-hover:text-primary-500" />
-                                    </div>
-                                    <p className="text-sm font-bold text-slate-700 mb-1">Add Photo Reference</p>
-                                    <p className="text-xs text-slate-500">Take a photo or upload from gallery</p>
+                                  <p className="text-xs text-slate-500 mt-1.5 font-medium">
+                                    Final size: {(ext.validationPhoto.size / 1024).toFixed(2)} KB (max 45 KB)
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center p-6 text-center animate-fade-in pointer-events-none">
+                                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3 hover:scale-110 transition-transform">
+                                    <Camera size={24} className="text-slate-400" />
                                   </div>
-                                )}
-                              </label>
+                                  <p className="text-sm font-bold text-slate-700 mb-1">Add Photo Reference</p>
+                                  <p className="text-xs text-slate-500">Take a photo or upload from gallery</p>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <QrScanFieldGroup

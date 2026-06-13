@@ -1,8 +1,8 @@
-import React from 'react';
-import { FileText, Calendar, MapPin, Tag, User, MessageCircle, Hash } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Calendar, MapPin, Tag, User, MessageCircle, Hash, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 import CustomerContactSection from './CustomerContactSection';
 
-const ValidationInquiryDetail = ({ viewModel }) => {
+const ValidationInquiryDetail = ({ viewModel, inquiryItems = [] }) => {
     const {
         badgeLabel,
         clientName,
@@ -22,7 +22,18 @@ const ValidationInquiryDetail = ({ viewModel }) => {
         customerLocationLng,
     } = viewModel;
 
+    const [expandedRow, setExpandedRow] = useState(null);
+
     const mailHref = customerEmail ? `mailto:${customerEmail}` : null;
+
+    const formatDetailValue = (val) => (val == null || val === '') ? '—' : String(val);
+
+    const DetailCell = ({ label, value }) => (
+        <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+            <p className="text-sm font-semibold text-slate-800">{formatDetailValue(value)}</p>
+        </div>
+    );
 
     return (
         <div className="bg-white rounded-3xl border border-slate-100 shadow-soft-xl overflow-hidden">
@@ -133,27 +144,90 @@ const ValidationInquiryDetail = ({ viewModel }) => {
                                             <th className="px-6 py-5">Extinguisher Type</th>
                                             <th className="px-6 py-5">Quantity</th>
                                             <th className="px-6 py-5">Serial Range</th>
+                                            <th className="px-6 py-5 text-right">Details</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {utilizationRows.length === 0 ? (
                                             <tr>
-                                                <td colSpan={3} className="px-6 py-16 text-center text-slate-400 font-medium">
+                                                <td colSpan={4} className="px-6 py-16 text-center text-slate-400 font-medium">
                                                     No utilization data available
                                                 </td>
                                             </tr>
                                         ) : (
-                                            utilizationRows.map((item, idx) => (
-                                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-6 py-5 font-semibold text-slate-900">{item.type}</td>
-                                                    <td className="px-6 py-5 text-slate-700 font-medium">{item.count}</td>
-                                                    <td className="px-6 py-5">
-                                                        <span className="px-4 py-1 bg-slate-100 text-slate-600 rounded-xl text-xs font-medium">
-                                                            {item.serialRange}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))
+                                            utilizationRows.map((item, idx) => {
+                                                const detail = inquiryItems[idx] || null;
+                                                const isExpanded = expandedRow === idx;
+
+                                                return (
+                                                    <React.Fragment key={idx}>
+                                                        <tr className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-6 py-5 font-semibold text-slate-900">{item.type}</td>
+                                                            <td className="px-6 py-5 text-slate-700 font-medium">{item.count}</td>
+                                                            <td className="px-6 py-5">
+                                                                <span className="px-4 py-1 bg-slate-100 text-slate-600 rounded-xl text-xs font-medium">
+                                                                    {item.serialRange}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-5 text-right">
+                                                                {detail && (
+                                                                    <button
+                                                                        onClick={() => setExpandedRow(isExpanded ? null : idx)}
+                                                                        className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 hover:text-primary-700 uppercase tracking-wider transition-colors"
+                                                                    >
+                                                                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                                        {isExpanded ? 'Hide' : 'View Details'}
+                                                                    </button>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+
+                                                        {isExpanded && detail && (
+                                                            <tr>
+                                                                <td colSpan={4} className="px-6 pb-6 pt-0 bg-primary-50/20 border-b border-slate-100">
+                                                                    <div className="bg-white rounded-2xl border border-slate-100 p-5 mt-2">
+                                                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+                                                                            <DetailCell label="Capacity" value={detail.capacity} />
+                                                                            <DetailCell label="Status" value={detail.status} />
+                                                                            <DetailCell label="Validation Mode" value={detail.validation_mode} />
+                                                                            <DetailCell label="Serial No." value={detail.serial_no} />
+                                                                            {detail.system_type && (
+                                                                                <DetailCell label="System Type" value={detail.system_type} />
+                                                                            )}
+                                                                            {detail.system && (
+                                                                                <DetailCell label="System" value={detail.system} />
+                                                                            )}
+                                                                            {detail.follow_up_date_validation && (
+                                                                                <DetailCell label="Follow-up Date" value={detail.follow_up_date_validation} />
+                                                                            )}
+                                                                            {detail.maintenance_notes && (
+                                                                                <DetailCell label="Notes" value={detail.maintenance_notes} />
+                                                                            )}
+                                                                        </div>
+                                                                        {detail.extinguisher_photo && (
+                                                                            <div className="mt-5 pt-4 border-t border-slate-100">
+                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Photo Reference</p>
+                                                                                <a
+                                                                                    href={detail.extinguisher_photo}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="inline-block"
+                                                                                >
+                                                                                    <img
+                                                                                        src={detail.extinguisher_photo}
+                                                                                        alt="Photo reference"
+                                                                                        className="h-24 w-24 object-cover rounded-xl border border-slate-200 shadow-sm hover:opacity-90 transition-opacity"
+                                                                                    />
+                                                                                </a>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>
