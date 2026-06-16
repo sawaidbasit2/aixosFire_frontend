@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Link } from 'react-router-dom';
-import { Check, X, User, Phone, MapPin, FileText, Shield, Pause, BarChart2 } from 'lucide-react';
+import { Check, X, User, Phone, MapPin, FileText, Shield, Pause, Eye, MessageSquare, BarChart2 } from 'lucide-react';
 import PageLoader from '../../components/PageLoader';
 import { AGENT_STATUS } from '../../constants/agentApprovalStatus';
 
@@ -208,7 +208,7 @@ const AgentManagement = () => {
                                             to={`/admin/agents/${agent.id}`}
                                             className="py-2 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all"
                                         >
-                                            <BarChart2 size={15} /> Profile
+                                            <Eye size={15} /> View Details
                                         </Link>
                                         {showAccept && (
                                             <button
@@ -237,6 +237,12 @@ const AgentManagement = () => {
                                                 <Pause size={16} /> Hold
                                             </button>
                                         )}
+                                        <Link
+                                            to={`/admin/agents/${agent.id}?tab=complaints`}
+                                            className="py-2 px-4 border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all"
+                                        >
+                                            <MessageSquare size={15} /> Complaint & Query
+                                        </Link>
                                     </div>
                                 );
                             })()}

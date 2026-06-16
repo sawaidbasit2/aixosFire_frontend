@@ -4,13 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { fetchCustomerInquiries, fetchCustomerQuotations } from '../api/customerPortal';
 import { getComplaintUnreadCountForAdmin, getComplaintUnreadCountForUser } from '../api/complaintsApi';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const EXPIRY_DAYS = 10;
 
 const NotificationBell = ({ onOpenChat }) => {
     const { user } = useAuth();
     const role = user?.role || localStorage.getItem('role');
+    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -226,16 +227,45 @@ const NotificationBell = ({ onOpenChat }) => {
 
         try {
             if (role === 'admin') {
-                const adminUnread = await getComplaintUnreadCountForAdmin();
-                if (adminUnread > 0) {
-                    list.unshift({
-                        id: 'complaint-admin-unread',
-                        title: 'Complaint Center',
-                        message: `${adminUnread} unread user complaint${adminUnread > 1 ? 's' : ''}`,
-                        type: 'complaint',
-                        timestamp: new Date().toISOString(),
-                        isRead: false
-                    });
+                // Per-agent complaint notifications so clicking navigates directly to that agent
+                const { data: agentMsgs } = await supabase
+                    .from('complaints')
+                    .select('user_id, message, created_at')
+                    .eq('user_role', 'agent')
+                    .eq('is_admin', false)
+                    .eq('is_read', false)
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+
+                const seenAgents = new Set();
+                (agentMsgs || []).forEach(msg => {
+                    if (!seenAgents.has(msg.user_id)) {
+                        seenAgents.add(msg.user_id);
+                        list.unshift({
+                            id: `agent-complaint-${msg.user_id}`,
+                            title: 'Agent Complaint',
+                            message: (msg.message || '').slice(0, 80),
+                            type: 'agent_complaint',
+                            timestamp: msg.created_at,
+                            isRead: false,
+                            agentId: msg.user_id,
+                        });
+                    }
+                });
+
+                // Fallback: generic count for non-agent (customer/partner) complaints
+                if (seenAgents.size === 0) {
+                    const adminUnread = await getComplaintUnreadCountForAdmin();
+                    if (adminUnread > 0) {
+                        list.unshift({
+                            id: 'complaint-admin-unread',
+                            title: 'Complaint Center',
+                            message: `${adminUnread} unread user complaint${adminUnread > 1 ? 's' : ''}`,
+                            type: 'complaint',
+                            timestamp: new Date().toISOString(),
+                            isRead: false,
+                        });
+                    }
                 }
             } else {
                 const userUnread = await getComplaintUnreadCountForUser(user.id);
@@ -468,8 +498,17 @@ const NotificationBell = ({ onOpenChat }) => {
             setIsOpen(false);
             return;
         }
+        if (notification.type === 'agent_complaint') {
+            navigate(`/admin/agents/${notification.agentId}?tab=complaints`);
+            setIsOpen(false);
+            return;
+        }
+        if (notification.type === 'complaint') {
+            navigate('/admin/complaints');
+            setIsOpen(false);
+            return;
+        }
         if (notification.type === 'message' && onOpenChat) {
-            // Pass inquiryId and sender info for the new real-time chat
             onOpenChat(notification.relatedId, {
                 senderId: notification.senderId,
                 senderRole: notification.senderRole
@@ -494,6 +533,7 @@ const NotificationBell = ({ onOpenChat }) => {
         if (n.type === 'quotation') return <FileText size={18} className="text-emerald-600" />;
         if (n.type === 'partial_accept') return <Package size={18} className="text-purple-600" />;
         if (n.type === 'message') return <MessageSquare size={18} className="text-blue-600" />;
+        if (n.type === 'agent_complaint') return <MessageSquare size={18} className="text-orange-600" />;
         return <Clock size={18} className="text-amber-600" />;
     };
 
@@ -502,6 +542,7 @@ const NotificationBell = ({ onOpenChat }) => {
         if (n.type === 'quotation') return 'bg-emerald-100 text-emerald-700';
         if (n.type === 'partial_accept') return 'bg-purple-100 text-purple-700';
         if (n.type === 'message') return 'bg-blue-100 text-blue-600';
+        if (n.type === 'agent_complaint') return 'bg-orange-100 text-orange-600';
         return 'bg-slate-100 text-slate-600';
     };
 

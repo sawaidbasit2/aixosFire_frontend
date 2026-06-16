@@ -4,9 +4,11 @@ import { supabase } from '../../supabaseClient';
 import ComplaintChat from '../../components/Chat/ComplaintChat';
 import { getComplaintThreads } from '../../api/complaintsApi';
 import { useAuth } from '../../context/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 
 const ComplaintCenter = () => {
     const { user } = useAuth();
+    const [searchParams] = useSearchParams();
     const [threads, setThreads] = useState([]);
     const [activeThread, setActiveThread] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -30,6 +32,15 @@ const ComplaintCenter = () => {
         loadThreads();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Auto-select a thread when navigated from Agent Profile (?userId=<agentId>)
+    useEffect(() => {
+        if (!threads.length) return;
+        const targetUserId = searchParams.get('userId');
+        if (!targetUserId) return;
+        const target = threads.find((t) => t.userId === targetUserId);
+        if (target) setActiveThread(target);
+    }, [threads, searchParams]);
 
     useEffect(() => {
         const channel = supabase

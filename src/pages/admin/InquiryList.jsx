@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import PageLoader from '../../components/PageLoader';
 import {
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 const SERVICE_TYPES = ['All', 'inspection', 'refilling', 'installation', 'validation', 'maintenance'];
-const STATUS_TYPES  = ['All', 'pending', 'in progress', 'scheduled', 'completed', 'rejected', 'cancelled'];
+const STATUS_TYPES  = ['All', 'pending', 'accepted', 'in progress', 'scheduled', 'completed', 'quoted', 'rejected', 'cancelled'];
 const PAGE_SIZE = 20;
 
 const getBadgeClass = (status) => {
@@ -19,40 +19,57 @@ const getBadgeClass = (status) => {
     return 'bg-amber-100 text-amber-700';
 };
 
+const normalizeStatus = (raw) => {
+    if (!raw || raw.toLowerCase() === 'all') return 'All';
+    return raw.toLowerCase();
+};
+
 const InquiryList = () => {
+    const [searchParams] = useSearchParams();
     const [inquiries, setInquiries]   = useState([]);
     const [loading, setLoading]       = useState(true);
     const [search, setSearch]         = useState('');
-    const [statusFilter, setStatus]   = useState('All');
+    const [statusFilter, setStatus]   = useState(() =>
+        normalizeStatus(new URLSearchParams(window.location.search).get('status'))
+    );
     const [typeFilter, setType]       = useState('All');
     const [page, setPage]             = useState(0);
     const [total, setTotal]           = useState(0);
 
+    // Sync filter when the URL changes while this component is already mounted
+    // (e.g. navigating here from Analytics with ?status=... when InquiryList was already in the tree)
+    useEffect(() => {
+        const normalized = normalizeStatus(searchParams.get('status'));
+        setStatus(normalized);
+    }, [searchParams]);
+
     const fetch = useCallback(async () => {
         setLoading(true);
         try {
+            // Fetch all records (type + search filtered server-side).
+            // Status is filtered client-side because server-side ilike on the status
+            // column returns incorrect results in this Supabase/PostgREST setup.
             let q = supabase
                 .from('inquiries')
                 .select(
-                    'id,inquiry_no,type,status,priority,created_at,follow_up_date,customer_id,agent_id,customers(business_name),agents(name)',
-                    { count: 'exact' }
-                );
+                    'id,inquiry_no,type,status,priority,created_at,follow_up_date,customer_id,agent_id,customers(business_name),agents(name)'
+                )
+                .order('created_at', { ascending: false });
 
-            if (statusFilter !== 'All') q = q.ilike('status', statusFilter);
-            if (typeFilter !== 'All')   q = q.ilike('type', typeFilter);
-            if (search.trim()) {
-                q = q.or(
-                    `inquiry_no.ilike.%${search.trim()}%`
-                );
-            }
+            if (typeFilter !== 'All') q = q.ilike('type', typeFilter);
+            if (search.trim())        q = q.ilike('inquiry_no', `%${search.trim()}%`);
 
-            const { data, count, error } = await q
-                .order('created_at', { ascending: false })
-                .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
-
+            const { data, error } = await q;
             if (error) throw error;
-            setInquiries(data || []);
-            setTotal(count || 0);
+
+            // Client-side status filter (case-insensitive)
+            const all = data || [];
+            const filtered = statusFilter === 'All'
+                ? all
+                : all.filter(row => (row.status || '').toLowerCase() === statusFilter.toLowerCase());
+
+            setTotal(filtered.length);
+            setInquiries(filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE));
         } catch (err) {
             console.error('InquiryList fetch error:', err);
         } finally {

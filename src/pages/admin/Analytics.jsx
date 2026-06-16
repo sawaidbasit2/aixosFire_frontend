@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../supabaseClient';
 import PageLoader from '../../components/PageLoader';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend
@@ -29,6 +29,7 @@ const StatusDot = ({ status }) => {
 };
 
 const Analytics = () => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState('6m');
     const [raw, setRaw] = useState({ inquiries: [], customers: [], agents: [], partners: [] });
@@ -259,21 +260,42 @@ const Analytics = () => {
                 {/* Completion Funnel */}
                 <ChartCard title="Inquiry Status Breakdown" subtitle="Distribution by current status">
                     <div className="space-y-3 pt-2">
+                        {/* Total Inquiries row */}
+                        <button
+                            onClick={() => navigate('/admin/inquiries')}
+                            className="w-full text-left group cursor-pointer rounded-xl px-2 py-1.5 -mx-2 hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex justify-between text-xs mb-1">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="inline-block w-2 h-2 rounded-full bg-slate-400"/>
+                                    <span className="text-slate-600 font-semibold group-hover:text-primary-600 transition-colors">Total Inquiries</span>
+                                </div>
+                                <span className="font-bold text-slate-900 group-hover:text-primary-600 transition-colors">{metrics.total}</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                <div className="h-1.5 rounded-full transition-all bg-slate-400" style={{ width: '100%' }}/>
+                            </div>
+                        </button>
+
                         {metrics.statusBreakdown.map((item, i) => {
                             const pct = metrics.total ? Math.round((item.value / metrics.total) * 100) : 0;
                             return (
-                                <div key={item.name}>
+                                <button
+                                    key={item.name}
+                                    onClick={() => navigate(`/admin/inquiries?status=${encodeURIComponent(item.name)}`)}
+                                    className="w-full text-left group cursor-pointer rounded-xl px-2 py-1.5 -mx-2 hover:bg-slate-50 transition-colors"
+                                >
                                     <div className="flex justify-between text-xs mb-1">
                                         <div className="flex items-center gap-1.5">
                                             <StatusDot status={item.name}/>
-                                            <span className="text-slate-600 capitalize">{item.name}</span>
+                                            <span className="text-slate-600 capitalize group-hover:text-primary-600 transition-colors">{item.name}</span>
                                         </div>
-                                        <span className="font-bold text-slate-900">{item.value} <span className="text-slate-400 font-normal">({pct}%)</span></span>
+                                        <span className="font-bold text-slate-900 group-hover:text-primary-600 transition-colors">{item.value} <span className="text-slate-400 font-normal">({pct}%)</span></span>
                                     </div>
                                     <div className="w-full bg-slate-100 rounded-full h-1.5">
                                         <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: PIE_COLORS[i % PIE_COLORS.length] }}/>
                                     </div>
-                                </div>
+                                </button>
                             );
                         })}
                     </div>

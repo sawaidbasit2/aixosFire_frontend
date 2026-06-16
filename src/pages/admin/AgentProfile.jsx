@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import PageLoader from '../../components/PageLoader';
 import {
@@ -9,7 +9,7 @@ import {
 import {
     ArrowLeft, User, Phone, MapPin, Calendar, CheckCircle,
     Clock, XCircle, Activity, AlertTriangle, Award,
-    TrendingUp, TrendingDown, Eye, Target, Zap, Timer
+    TrendingUp, TrendingDown, Eye, Target, Zap, Timer, MessageSquare
 } from 'lucide-react';
 import PerformanceBadge from '../../components/admin/PerformanceBadge';
 import StatCard from '../../components/admin/StatCard';
@@ -150,11 +150,14 @@ const BmBar = ({ barFillPct, withinBenchmark, status }) => {
 ══════════════════════════════════════════════════════════ */
 const AgentProfile = () => {
     const { id } = useParams();
-    const [loading, setLoading]       = useState(true);
-    const [agent, setAgent]           = useState(null);
-    const [inquiries, setInquiries]   = useState([]);
-    const [activeTab, setActiveTab]   = useState('overview');
-    const [statusFilter, setStatusFilter] = useState('All');
+    const [searchParams] = useSearchParams();
+    const [loading, setLoading]             = useState(true);
+    const [agent, setAgent]                 = useState(null);
+    const [inquiries, setInquiries]         = useState([]);
+    const [activeTab, setActiveTab]         = useState(searchParams.get('tab') || 'overview');
+    const [statusFilter, setStatusFilter]   = useState('All');
+    const [complaints, setComplaints]       = useState([]);
+    const [complaintsLoading, setComplaintsLoading] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -177,6 +180,33 @@ const AgentProfile = () => {
         };
         load();
     }, [id]);
+
+    // Sync active tab when URL changes (e.g. navigated from notification)
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) setActiveTab(tab);
+    }, [searchParams]);
+
+    // Load this agent's complaint messages when the complaints tab is opened
+    useEffect(() => {
+        if (activeTab !== 'complaints') return;
+        const loadComplaints = async () => {
+            setComplaintsLoading(true);
+            try {
+                const { data } = await supabase
+                    .from('complaints')
+                    .select('*')
+                    .eq('user_id', id)
+                    .order('created_at', { ascending: false });
+                setComplaints(data || []);
+            } catch (err) {
+                console.error('AgentProfile complaints load error:', err);
+            } finally {
+                setComplaintsLoading(false);
+            }
+        };
+        loadComplaints();
+    }, [activeTab, id]);
 
     /* ── Core metrics ── */
     const metrics = useMemo(() => {
@@ -252,9 +282,10 @@ const AgentProfile = () => {
     );
 
     const TABS = [
-        { id: 'overview',  label: 'Overview' },
-        { id: 'inquiries', label: `Inquiries (${metrics.total})` },
-        { id: 'timeline',  label: 'Activity Timeline' },
+        { id: 'overview',   label: 'Overview' },
+        { id: 'inquiries',  label: `Inquiries (${metrics.total})` },
+        { id: 'timeline',   label: 'Activity Timeline' },
+        { id: 'complaints', label: 'Complaints & Issues' },
     ];
 
     return (
@@ -628,6 +659,133 @@ const AgentProfile = () => {
                                 })}
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ══ COMPLAINTS & ISSUES TAB ══ */}
+            {activeTab === 'complaints' && (
+                <div className="space-y-4">
+
+                    {/* ── Complaint Thread List ── */}
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
+                        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+                            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                <MessageSquare size={16} className="text-primary-500" />
+                                Complaints & Queries
+                                {complaints.length > 0 && (
+                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
+                                        {complaints.filter(c => !c.is_admin && !c.is_bot).length} message{complaints.filter(c => !c.is_admin && !c.is_bot).length !== 1 ? 's' : ''}
+                                    </span>
+                                )}
+                            </h3>
+                        </div>
+
+                        {complaintsLoading ? (
+                            <div className="flex items-center justify-center py-14">
+                                <div className="w-6 h-6 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        ) : complaints.length === 0 ? (
+                            <div className="text-center py-14">
+                                <MessageSquare size={32} className="mx-auto text-slate-200 mb-3" />
+                                <p className="text-slate-400 text-sm font-medium">No complaints or queries raised by this agent.</p>
+                                <p className="text-xs text-slate-300 mt-1">Complaints appear here when the agent submits one.</p>
+                            </div>
+                        ) : (
+                            <div className="p-6">
+                                {/* Single thread card — one agent = one complaint thread */}
+                                {(() => {
+                                    const isOpen = complaints.some(c => c.status === 'open');
+                                    const agentMessages = complaints.filter(c => !c.is_admin && !c.is_bot);
+                                    const firstMsg = complaints[complaints.length - 1];
+                                    const lastMsg = complaints[0];
+                                    return (
+                                        <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                                            {/* Card header */}
+                                            <div className="flex items-center justify-between px-5 py-4 bg-slate-50 border-b border-slate-100">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-orange-100 rounded-xl">
+                                                        <MessageSquare size={15} className="text-orange-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-900">Complaint Thread</p>
+                                                        <p className="text-xs text-slate-500 mt-0.5">
+                                                            {complaints.length} message{complaints.length !== 1 ? 's' : ''}
+                                                            {' · '}Started {new Date(firstMsg?.created_at).toLocaleDateString()}
+                                                            {agentMessages.length > 0 && ` · ${agentMessages.length} from agent`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${isOpen ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {isOpen ? 'Open' : 'Resolved'}
+                                                </span>
+                                            </div>
+
+                                            {/* Recent message previews (last 3) */}
+                                            <div className="divide-y divide-slate-50">
+                                                {complaints.slice(0, 3).map(c => (
+                                                    <div key={c.id} className={`px-5 py-3.5 ${c.is_admin ? 'bg-blue-50/40' : ''}`}>
+                                                        <div className="flex items-start gap-2.5">
+                                                            <div className={`p-1 rounded-lg flex-shrink-0 mt-0.5 ${c.is_admin ? 'bg-blue-100' : 'bg-slate-100'}`}>
+                                                                <User size={11} className={c.is_admin ? 'text-blue-600' : 'text-slate-500'} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 mb-0.5">
+                                                                    <span className="text-xs font-bold text-slate-600">
+                                                                        {c.is_bot ? 'Bot' : c.is_admin ? 'Admin' : (agent.name || 'Agent')}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-slate-400">
+                                                                        {new Date(c.created_at).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">{c.message}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {complaints.length > 3 && (
+                                                    <div className="px-5 py-2.5 text-xs text-slate-400 text-center bg-slate-50/50">
+                                                        +{complaints.length - 3} more message{complaints.length - 3 !== 1 ? 's' : ''} in full conversation
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* CTA: open full conversation in ComplaintCenter */}
+                                            <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/30">
+                                                <Link
+                                                    to={`/admin/complaints?userId=${id}`}
+                                                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-colors"
+                                                >
+                                                    <MessageSquare size={14} />
+                                                    View Complaint Details
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── Hold History ── */}
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-6">
+                        <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <AlertTriangle size={16} className="text-amber-500" />
+                            Hold History
+                        </h3>
+                        {(agent.status || '').toLowerCase() === 'hold' ? (
+                            <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                                <AlertTriangle size={16} className="text-amber-600 flex-shrink-0" />
+                                <div>
+                                    <p className="text-sm font-bold text-amber-800">Agent is currently on hold</p>
+                                    <p className="text-xs text-amber-600 mt-0.5">
+                                        Last updated: {new Date(agent.updated_at || agent.created_at).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-400">No hold history recorded for this agent.</p>
+                        )}
                     </div>
                 </div>
             )}
