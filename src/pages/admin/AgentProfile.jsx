@@ -284,7 +284,7 @@ const AgentProfile = () => {
     const TABS = [
         { id: 'overview',   label: 'Overview' },
         { id: 'inquiries',  label: `Inquiries (${metrics.total})` },
-        { id: 'timeline',   label: 'Activity Timeline' },
+        // { id: 'timeline',   label: 'Activity Timeline' },
         { id: 'complaints', label: 'Complaints & Issues' },
     ];
 
@@ -451,7 +451,6 @@ const AgentProfile = () => {
             {activeTab === 'timeline' && (
                 <div className="space-y-6">
 
-                    {/* ── Benchmark Rules Reference ── */}
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <Target size={16} className="text-slate-500" />
@@ -468,7 +467,6 @@ const AgentProfile = () => {
                         </div>
                     </div>
 
-                    {/* ── Performance Analytics ── */}
                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                         <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-5">
                             <div className="p-2.5 rounded-xl bg-blue-500 w-fit mb-3"><Activity size={16} className="text-white" /></div>
@@ -501,7 +499,6 @@ const AgentProfile = () => {
                         </div>
                     </div>
 
-                    {/* ── Benchmark Chart (Within vs Missed by Type) ── */}
                     {bmMetrics.chartData.length > 0 && (
                         <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-6">
                             <div className="flex items-center justify-between mb-5">
@@ -529,7 +526,6 @@ const AgentProfile = () => {
                         </div>
                     )}
 
-                    {/* ── Timeline Cards ── */}
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-6">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="font-bold text-slate-900">Inquiry Timeline</h3>
@@ -541,7 +537,6 @@ const AgentProfile = () => {
                         )}
 
                         <div className="relative">
-                            {/* Vertical spine */}
                             <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-100" />
 
                             <div className="space-y-4">
@@ -560,9 +555,7 @@ const AgentProfile = () => {
                                                 bm.benchmarkStatus === 'rejected' ? 'bg-slate-400'   : 'bg-slate-300'
                                             }`} />
 
-                                            {/* Card */}
                                             <div className="flex-1 border border-slate-100 rounded-2xl p-4 hover:shadow-sm transition-shadow bg-white">
-                                                {/* Header row */}
                                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-2 flex-wrap">
@@ -590,7 +583,6 @@ const AgentProfile = () => {
                                                     </Link>
                                                 </div>
 
-                                                {/* Dates grid */}
                                                 <div className="grid grid-cols-3 gap-3 mt-4">
                                                     <div className="bg-slate-50 rounded-xl p-3">
                                                         <p className="text-xs text-slate-400 font-semibold mb-1">Start Date</p>
@@ -617,7 +609,6 @@ const AgentProfile = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Visual Benchmark Bar */}
                                                 <div className="mt-4">
                                                     <BmBar
                                                         barFillPct={bm.barFillPct}
@@ -626,7 +617,6 @@ const AgentProfile = () => {
                                                     />
                                                 </div>
 
-                                                {/* Duration summary */}
                                                 {bm.durationHours !== null && (
                                                     <div className="mt-3 flex items-center gap-2">
                                                         {bm.withinBenchmark
@@ -646,7 +636,6 @@ const AgentProfile = () => {
                                                     </div>
                                                 )}
 
-                                                {/* At-risk warning for open inquiries */}
                                                 {bm.benchmarkStatus === 'at_risk' && (
                                                     <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
                                                         <AlertTriangle size={13} className="flex-shrink-0" />

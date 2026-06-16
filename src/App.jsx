@@ -41,6 +41,7 @@ import Operations from './pages/admin/Operations';
 import Reports from './pages/admin/Reports';
 import InquiryList from './pages/admin/InquiryList';
 import InquiryDetail from './pages/admin/InquiryDetail';
+import QuotationAnalytics from './pages/admin/QuotationAnalytics';
 import AgentPerformance from './pages/perfomance/Dashboard';
 import CategoryDetails from './pages/perfomance/CategoryDetails';
 
@@ -138,6 +139,7 @@ function App() {
                   <Route path="reports" element={<Reports />} />
                   <Route path="inquiries" element={<InquiryList />} />
                   <Route path="inquiries/:id" element={<InquiryDetail />} />
+                  <Route path="quotations" element={<QuotationAnalytics />} />
                 </Routes>
               </ProtectedRoute>
             } />

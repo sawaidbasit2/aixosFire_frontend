@@ -134,6 +134,34 @@ const PipelineCard = ({ pending, inProgress, scheduled }) => (
     </div>
 );
 
+const QuotationCard = ({ totalValue, totalQuotations, wonCount }) => (
+    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col">
+        <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-2xl bg-purple-600">
+                <FileText size={20} className="text-white" />
+            </div>
+        </div>
+        <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Quotations</p>
+        <h3 className="text-2xl font-bold text-slate-900">SAR {totalValue.toLocaleString()}</h3>
+        <div className="mt-3 pt-3 border-t border-slate-50 space-y-1.5 flex-1">
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Total Inquiries</span>
+                <span className="font-bold text-slate-700">{totalQuotations}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Closed / Completed</span>
+                <span className="font-bold text-emerald-600">{wonCount}</span>
+            </div>
+        </div>
+        <Link
+            to="/admin/quotations"
+            className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-xl transition-colors"
+        >
+            <Eye size={12} /> View Details
+        </Link>
+    </div>
+);
+
 /* ------------------------------------------------ */
 
 const AdminDashboard = () => {
@@ -152,6 +180,7 @@ const AdminDashboard = () => {
                     { data: inquiries },
                     { data: recentInquiries },
                     { data: agentsData },
+                    { data: quotationsData },
                 ] = await Promise.all([
                     supabase.from('agents').select('*', { count: 'exact', head: true }),
                     supabase.from('agents').select('*', { count: 'exact', head: true }).or('status.ilike.accepted,status.ilike.active'),
@@ -164,6 +193,7 @@ const AdminDashboard = () => {
                         .order('created_at', { ascending: false })
                         .limit(6),
                     supabase.from('agents').select('id,name').or('status.ilike.accepted,status.ilike.active'),
+                    supabase.from('quotations').select('estimated_cost, inquiries(status)'),
                 ]);
 
                 const list = inquiries || [];
@@ -208,6 +238,13 @@ const AdminDashboard = () => {
                 const inProgressCount = list.filter(i => (i.status||'').toLowerCase() === 'in progress').length;
                 const scheduledCount = list.filter(i => (i.status||'').toLowerCase() === 'scheduled').length;
 
+                // Quotation metrics
+                const quotationsList = quotationsData || [];
+                const totalQuotedValue = quotationsList.reduce((sum, q) => sum + (Number(q.estimated_cost) || 0), 0);
+                const wonQuotationsCount = quotationsList.filter(q =>
+                    ['completed','accepted','closed'].includes((q.inquiries?.status || '').toLowerCase())
+                ).length;
+
                 // Top agents by inquiry count
                 const agentInquiryMap = {};
                 list.forEach(i => {
@@ -240,6 +277,9 @@ const AdminDashboard = () => {
                     typeBreakdown,
                     topAgents,
                     recentInquiries: recentInquiries || [],
+                    totalQuotedValue,
+                    totalQuotations: quotationsList.length,
+                    wonQuotationsCount,
                 });
             } catch (err) {
                 console.error('Dashboard load error:', err);
@@ -284,7 +324,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* KPI Row 2 */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 <StatCard icon={UserPlus} title="Total Customers" value={data?.totalCustomers||0} color="bg-sky-500" trend={5} subtext="Registered businesses" />
                 <TotalInquiriesCard
                     total={data?.totalInquiries || 0}
@@ -300,6 +340,11 @@ const AdminDashboard = () => {
                     pending={data?.pendingCount || 0}
                     inProgress={data?.inProgressCount || 0}
                     scheduled={data?.scheduledCount || 0}
+                />
+                <QuotationCard
+                    totalValue={data?.totalQuotedValue || 0}
+                    totalQuotations={data?.totalQuotations || 0}
+                    wonCount={data?.wonQuotationsCount || 0}
                 />
             </div>
 
