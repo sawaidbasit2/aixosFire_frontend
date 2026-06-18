@@ -447,8 +447,8 @@ const AgentProfile = () => {
                 </div>
             )}
 
-            {/* ══ ACTIVITY TIMELINE TAB ══ */}
-            {activeTab === 'timeline' && (
+            {/* ══ ACTIVITY TIMELINE TAB ══ (moved to InquiryDetail page) */}
+            {false && activeTab === 'timeline' && (
                 <div className="space-y-6">
 
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-5">

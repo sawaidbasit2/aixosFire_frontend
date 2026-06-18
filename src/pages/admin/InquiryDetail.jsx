@@ -6,12 +6,117 @@ import {
     ArrowLeft, FileText, User, Briefcase, Handshake,
     Calendar, CheckCircle, Clock, XCircle, Activity,
     MapPin, Mail, Phone, DollarSign, Tag, AlertCircle,
-    QrCode, Package, ChevronRight, Hash
+    QrCode, Package, ChevronRight, Hash,
+    AlertTriangle, TrendingUp, TrendingDown, Target, Timer, Eye, X
 } from 'lucide-react';
 
 const SERVICE_PRICING = {
     inspection: 50, refilling: 65, installation: 150,
     validation: 45, maintenance: 80,
+};
+
+/* ─── Benchmark Configuration ───────────────────────── */
+const BENCHMARK = {
+    validation:   { hours: 24,  label: '24 hours', color: '#8b5cf6' },
+    refilling:    { hours: 72,  label: '3 days',   color: '#3b82f6' },
+    maintenance:  { hours: 504, label: '3 weeks',  color: '#f97316' },
+    installation: { hours: 504, label: '3 weeks',  color: '#f97316' },
+    inspection:   { hours: 24,  label: '24 hours', color: '#06b6d4' },
+};
+const DEFAULT_BENCHMARK = { hours: 72, label: '3 days', color: '#94a3b8' };
+
+const getBenchmark = (type) => BENCHMARK[(type || '').toLowerCase()] || DEFAULT_BENCHMARK;
+
+const calcBenchmark = (inq) => {
+    const start        = new Date(inq.created_at);
+    const bm           = getBenchmark(inq.type);
+    const benchmarkEnd = new Date(start.getTime() + bm.hours * 3_600_000);
+
+    const isCompleted = ['completed', 'accepted', 'closed'].includes((inq.status || '').toLowerCase());
+    const isRejected  = ['rejected', 'cancelled'].includes((inq.status || '').toLowerCase());
+
+    let closingDate = null;
+    if (isCompleted || isRejected) {
+        if (inq.updated_at)          closingDate = new Date(inq.updated_at);
+        else if (inq.follow_up_date) closingDate = new Date(inq.follow_up_date);
+    }
+
+    let benchmarkStatus = 'pending';
+    let withinBenchmark = null;
+
+    if (isCompleted && closingDate) {
+        withinBenchmark = closingDate <= benchmarkEnd;
+        benchmarkStatus = withinBenchmark ? 'within' : 'missed';
+    } else if (!isCompleted && !isRejected) {
+        benchmarkStatus = new Date() > benchmarkEnd ? 'at_risk' : 'on_track';
+    } else if (isRejected) {
+        benchmarkStatus = 'rejected';
+    }
+
+    const durationMs    = closingDate ? Math.max(0, closingDate - start) : null;
+    const durationHours = durationMs !== null ? Math.round(durationMs / 3_600_000) : null;
+    const durationDays  = durationHours !== null ? (durationHours / 24).toFixed(1) : null;
+    const barFillPct    = durationHours !== null
+        ? Math.min(200, Math.round((durationHours / bm.hours) * 100))
+        : null;
+
+    return { start, benchmarkEnd, closingDate, benchmarkStatus, withinBenchmark, durationHours, durationDays, barFillPct, bmHours: bm.hours, bmLabel: bm.label };
+};
+
+const fmt     = (d) => d ? new Date(d).toLocaleDateString()  : '—';
+const fmtTime = (d) => d ? new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+/* ─── Benchmark Status Pill ─────────────────────────── */
+const BmPill = ({ status }) => {
+    const map = {
+        within:   { cls: 'bg-emerald-100 text-emerald-700', icon: CheckCircle,   label: 'Within Benchmark' },
+        missed:   { cls: 'bg-red-100 text-red-700',         icon: AlertTriangle, label: 'Benchmark Missed' },
+        on_track: { cls: 'bg-blue-100 text-blue-700',       icon: Target,        label: 'On Track' },
+        at_risk:  { cls: 'bg-amber-100 text-amber-700',     icon: Timer,         label: 'At Risk' },
+        pending:  { cls: 'bg-slate-100 text-slate-500',     icon: Clock,         label: 'Pending' },
+        rejected: { cls: 'bg-slate-100 text-slate-400',     icon: XCircle,       label: 'Rejected' },
+    };
+    const { cls, icon: Icon, label } = map[status] || map.pending;
+    return (
+        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${cls}`}>
+            <Icon size={11} /> {label}
+        </span>
+    );
+};
+
+/* ─── Visual Benchmark Bar ──────────────────────────── */
+const BmBar = ({ barFillPct, withinBenchmark, status }) => {
+    if (barFillPct === null || status === 'rejected') return null;
+    const isPending  = ['on_track', 'at_risk', 'pending'].includes(status);
+    const clampedPct = Math.min(100, barFillPct);
+    return (
+        <div>
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+                <span>Start</span>
+                <span className="font-semibold text-slate-500">Benchmark ▾</span>
+                <span>{isPending ? 'Now' : 'Closed'}</span>
+            </div>
+            <div className="relative w-full bg-slate-100 rounded-full h-3 overflow-visible">
+                <div className="absolute right-0 top-0 h-3 w-0.5 bg-slate-400 z-10 rounded-full" />
+                <div
+                    className={`h-3 rounded-full transition-all duration-700 ${
+                        isPending ? 'bg-blue-400' : withinBenchmark ? 'bg-emerald-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${clampedPct}%` }}
+                />
+                {!isPending && !withinBenchmark && barFillPct > 100 && (
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-red-500 border-2 border-white flex items-center justify-center z-20">
+                        <span className="text-white" style={{ fontSize: 7 }}>!</span>
+                    </div>
+                )}
+            </div>
+            {barFillPct > 100 && !isPending && (
+                <p className="text-xs text-red-500 font-semibold mt-1">
+                    {Math.round(barFillPct - 100)}% over benchmark
+                </p>
+            )}
+        </div>
+    );
 };
 
 const getBadgeClass = (status) => {
@@ -59,11 +164,158 @@ const TimelineEvent = ({ icon: Icon, color, label, date, last }) => (
     </div>
 );
 
+/* ─── Item Detail Slide-Over Panel ──────────────────── */
+const ItemDetailPanel = ({ item, onClose }) => {
+    if (!item) return null;
+
+    const photoUrl = item.photo_url || item.image_url || item.photos;
+    const notes    = item.notes || item.remarks || item.comment || item.comments;
+
+    const fields = [
+        (item.description || item.name) && {
+            label: 'Description / Name',
+            value: item.description || item.name,
+            icon: FileText,
+        },
+        (item.type || item.item_type) && {
+            label: 'Service Type',
+            value: item.type || item.item_type,
+            icon: Tag,
+            cap: true,
+        },
+        item.quantity !== undefined && item.quantity !== null && {
+            label: 'Quantity',
+            value: item.quantity,
+            icon: Package,
+        },
+        item.serial_number && { label: 'Serial Number',   value: item.serial_number,   icon: Hash },
+        item.unit_no       && { label: 'Unit Number',      value: item.unit_no,          icon: Hash },
+        item.capacity      && { label: 'Capacity',         value: item.capacity,         icon: Package },
+        item.size          && { label: 'Size',             value: item.size,             icon: Package },
+        item.location      && { label: 'Location',         value: item.location,         icon: MapPin },
+        item.sticker_number && { label: 'Sticker No.',    value: item.sticker_number,   icon: QrCode },
+        item.manufacturing_date && {
+            label: 'Manufacturing Date',
+            value: new Date(item.manufacturing_date).toLocaleDateString(),
+            icon: Calendar,
+        },
+        item.expiry_date && {
+            label: 'Expiry Date',
+            value: new Date(item.expiry_date).toLocaleDateString(),
+            icon: Calendar,
+        },
+        item.last_service_date && {
+            label: 'Last Service Date',
+            value: new Date(item.last_service_date).toLocaleDateString(),
+            icon: Calendar,
+        },
+        { label: 'Created',       value: new Date(item.created_at).toLocaleString(),  icon: Calendar },
+        item.updated_at && {
+            label: 'Last Updated',
+            value: new Date(item.updated_at).toLocaleString(),
+            icon: Clock,
+        },
+    ].filter(Boolean);
+
+    return (
+        <>
+            {/* Backdrop */}
+            <div className="fixed inset-0 bg-black/25 z-40" onClick={onClose} />
+
+            {/* Panel */}
+            <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-2xl bg-blue-50">
+                            <Package size={18} className="text-blue-600" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-900">Item Details</h3>
+                            <p className="text-xs text-slate-400 capitalize mt-0.5">
+                                {item.type || item.item_type || 'Inquiry Item'}
+                            </p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                        <X size={18} className="text-slate-500" />
+                    </button>
+                </div>
+
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                    {/* Status badge */}
+                    {item.status && (
+                        <div>
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-bold ${getBadgeClass(item.status)}`}>
+                                {item.status}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Fields list */}
+                    <div className="bg-slate-50/70 rounded-2xl overflow-hidden divide-y divide-slate-100/80">
+                        {fields.map((field, i) => (
+                            <div key={i} className="flex items-start gap-3 px-4 py-3.5">
+                                <div className="p-1.5 rounded-lg bg-white border border-slate-100 flex-shrink-0 mt-0.5">
+                                    <field.icon size={12} className="text-slate-400" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-slate-400">{field.label}</p>
+                                    <p className={`text-sm font-medium text-slate-800 mt-0.5 ${field.cap ? 'capitalize' : ''}`}>
+                                        {field.value}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Photo */}
+                    {photoUrl && (
+                        <div>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">
+                                Photos / Documents
+                            </p>
+                            {Array.isArray(photoUrl) ? (
+                                <div className="grid grid-cols-2 gap-2">
+                                    {photoUrl.map((url, i) => (
+                                        <a key={i} href={url} target="_blank" rel="noreferrer">
+                                            <img src={url} alt={`Item ${i + 1}`} className="w-full rounded-xl border border-slate-100 object-cover h-28" />
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : (
+                                <a href={photoUrl} target="_blank" rel="noreferrer" className="block">
+                                    <img src={photoUrl} alt="Item" className="w-full rounded-2xl border border-slate-100 object-cover max-h-52" />
+                                </a>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Notes */}
+                    {notes && (
+                        <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+                            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">
+                                Notes / Remarks
+                            </p>
+                            <p className="text-sm text-amber-900 leading-relaxed">{notes}</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+    );
+};
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════ */
 const InquiryDetail = () => {
     const { id } = useParams();
-    const [loading, setLoading] = useState(true);
-    const [inquiry, setInquiry] = useState(null);
-    const [items, setItems]     = useState([]);
+    const [loading, setLoading]       = useState(true);
+    const [inquiry, setInquiry]       = useState(null);
+    const [items, setItems]           = useState([]);
+    const [selectedItem, setSelectedItem] = useState(null);
 
     useEffect(() => {
         const load = async () => {
@@ -114,53 +366,6 @@ const InquiryDetail = () => {
     const estimatedRevenue = useMemo(() => {
         if (!inquiry) return 0;
         return SERVICE_PRICING[(inquiry.type || '').toLowerCase()] || 50;
-    }, [inquiry]);
-
-    const timeline = useMemo(() => {
-        if (!inquiry) return [];
-        const events = [];
-
-        events.push({
-            icon: FileText,
-            color: 'bg-blue-500',
-            label: 'Inquiry Created',
-            date: inquiry.created_at,
-        });
-
-        if (inquiry.follow_up_date) {
-            events.push({
-                icon: Calendar,
-                color: 'bg-violet-500',
-                label: 'Follow-up / Assignment Scheduled',
-                date: inquiry.follow_up_date,
-            });
-        }
-
-        const s = (inquiry.status || '').toLowerCase();
-        if (['in progress'].includes(s)) {
-            events.push({
-                icon: Activity,
-                color: 'bg-amber-500',
-                label: 'Work In Progress',
-                date: inquiry.updated_at || null,
-            });
-        } else if (['completed','accepted','closed'].includes(s)) {
-            events.push({
-                icon: CheckCircle,
-                color: 'bg-emerald-500',
-                label: 'Inquiry Completed',
-                date: inquiry.updated_at || inquiry.follow_up_date || null,
-            });
-        } else if (['rejected','cancelled'].includes(s)) {
-            events.push({
-                icon: XCircle,
-                color: 'bg-red-500',
-                label: `Inquiry ${s.charAt(0).toUpperCase() + s.slice(1)}`,
-                date: inquiry.updated_at || null,
-            });
-        }
-
-        return events;
     }, [inquiry]);
 
     if (loading) return <PageLoader message="Loading inquiry details…" />;
@@ -386,23 +591,6 @@ const InquiryDetail = () => {
                 </div>
             </div>
 
-            {/* Timeline */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-soft p-6">
-                <h3 className="font-bold text-slate-900 mb-6">Inquiry Timeline</h3>
-                <div className="space-y-0">
-                    {timeline.map((event, i) => (
-                        <TimelineEvent
-                            key={i}
-                            icon={event.icon}
-                            color={event.color}
-                            label={event.label}
-                            date={event.date}
-                            last={i === timeline.length - 1}
-                        />
-                    ))}
-                </div>
-            </div>
-
             {/* Inquiry Items */}
             {items.length > 0 && (
                 <div className="bg-white rounded-3xl border border-slate-100 shadow-soft overflow-hidden">
@@ -425,6 +613,7 @@ const InquiryDetail = () => {
                                     <th className="px-6 py-3">Status</th>
                                     <th className="px-6 py-3">Quantity</th>
                                     <th className="px-6 py-3">Date</th>
+                                    <th className="px-6 py-3 text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -449,6 +638,14 @@ const InquiryDetail = () => {
                                         </td>
                                         <td className="px-6 py-4 text-xs text-slate-400">
                                             {item.created_at ? new Date(item.created_at).toLocaleDateString() : '—'}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <Link
+                                                to={`/admin/inquiries/${id}/items/${item.id}`}
+                                                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors"
+                                            >
+                                                <Eye size={12} /> View Details
+                                            </Link>
                                         </td>
                                     </tr>
                                 ))}
@@ -486,6 +683,9 @@ const InquiryDetail = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Item Detail Slide-Over */}
+            <ItemDetailPanel item={selectedItem} onClose={() => setSelectedItem(null)} />
         </div>
     );
 };
